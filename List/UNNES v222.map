@@ -1,24 +1,26 @@
 RAM Allocation
 Variable                                                          Address   Size
 --------------------------------------------------------------------------------
-white                                                             0x0260       8
-black                                                             0x0268       8
-_base_y                                                           0x0270       4
+whiteMin                                                          0x0260       8
+blackMax                                                          0x0268       8
+middleVal                                                         0x0270       8
+_base_y                                                           0x0278       4
 
 EEPROM Allocation
 Variable                                                          Address   Size
 --------------------------------------------------------------------------------
-eeSpeed                                                           0x0000       1
+eeMaxSpeed                                                        0x0000       1
 eeKp                                                              0x0001       1
 eeKd                                                              0x0002       1
 eeKi                                                              0x0003       1
-eeWhite                                                           0x0004       8
-eeBlack                                                           0x000C       8
+eeWhiteMin                                                        0x0004       8
+eeBlackMax                                                        0x000C       8
+eeMiddleVal                                                       0x0014       8
 
 Register Allocation
 Variable                                                          Register  Size
 --------------------------------------------------------------------------------
-speed                                                             R5           1
+maxSpeed                                                          R5           1
 kp                                                                R4           1
 kd                                                                R7           1
 ki                                                                R6           1
