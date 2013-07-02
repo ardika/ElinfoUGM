@@ -75,7 +75,7 @@ eeprom unsigned char eeKd = 0;
 eeprom unsigned char eeKi = 0;
 
 // Varibel kepekaan sensor dalam memory non-volaitile
-eeprom unsigned char eeWhite[8] = {0}, eeBlack[8] = {0};
+eeprom unsigned char eeWhite[8] = {20}, eeBlack[8] = {0};
 
 // Varibael-varibel kontrol yang disimpan di memory volatile untuk perhitungan kontrol
 unsigned char speed, kp, kd, ki, error, sp;
@@ -87,6 +87,7 @@ unsigned char white[8] = {0}, black[8] = {0};
 // yang merupakan hasil perbandingan pembacaan nilai analog sensor dengan nilai kepekaan sensor
 unsigned char sensor = 0;
 
+
 /* function used to define user characters */
 void define_char(unsigned char flash *pc,unsigned char char_code)
 {
@@ -94,7 +95,6 @@ void define_char(unsigned char flash *pc,unsigned char char_code)
     a=(char_code<<3) | 0x40;
     for (i=0; i<8; i++) lcd_write_byte(a++,*pc++);
 }
-
 
 // Read the 8 most significant bits
 // of the AD conversion result
@@ -111,6 +111,13 @@ unsigned char read_adc(unsigned char adc_input)
     return ADCH;
 }
 
+void lcdPrintByte(unsigned char value)
+{
+    unsigned char ten = (value % 100) / 10;
+    lcd_putchar('0' + (value / 100));  
+    lcd_putchar('0' + ten);
+    lcd_putchar('0' + (value % 10));
+}
 
 void scanLine()
 {
@@ -139,7 +146,8 @@ void scanLine()
             if (adcRead[i] < black)
                 sensor |= (1<<i);
         }
-    } 
+    }  
+    lcdPrintByte(blackCount);
 }
 
 void loadVariables()
@@ -221,26 +229,33 @@ void stop(unsigned char usingPowerBrake)
 
 
 
-void lcdPutsByte(unsigned char value)
-{
-    unsigned char ten = (value % 100) / 10;
-    lcd_putchar('0' + (value / 100));  
-    lcd_putchar('0' + ten);
-    lcd_putchar('0' + (value % 10));
-}
 
+
+// Fungsi untuk mencetak nilai pembacaan sensor yang masih berupa nilai pembacaan ADC
 void printADCSensor()
 {
-    lcd_gotoxy(0,0); lcdPutsByte(read_adc(0));
-    lcd_gotoxy(4,0); lcdPutsByte(read_adc(1));
-    lcd_gotoxy(8,0); lcdPutsByte(read_adc(2));
-    lcd_gotoxy(12,0); lcdPutsByte(read_adc(3));
-    lcd_gotoxy(0,1); lcdPutsByte(read_adc(4));
-    lcd_gotoxy(4,1); lcdPutsByte(read_adc(5));
-    lcd_gotoxy(8,1); lcdPutsByte(read_adc(6));
-    lcd_gotoxy(12,1); lcdPutsByte(read_adc(7)); 
+    lcd_gotoxy(0,0); lcdPrintByte(read_adc(0));
+    lcd_gotoxy(4,0); lcdPrintByte(read_adc(1));
+    lcd_gotoxy(8,0); lcdPrintByte(read_adc(2));
+    lcd_gotoxy(12,0); lcdPrintByte(read_adc(3));
+    lcd_gotoxy(0,1); lcdPrintByte(read_adc(4));
+    lcd_gotoxy(4,1); lcdPrintByte(read_adc(5));
+    lcd_gotoxy(8,1); lcdPrintByte(read_adc(6));
+    lcd_gotoxy(12,1); lcdPrintByte(read_adc(7)); 
 }
 
+// Fungsi untuk mencetak nilai pembacaan sensor yang sudah menjadi data biner, bit bernilai 1 menandakan garis
+void printBinarySensor()  
+{
+    unsigned char i = 0;
+    
+    for (; i<8; i++) {
+        if (sensor & (1<<i))
+            lcd_putchar(FULL_BLOCK);
+        else
+            lcd_putchar(EMPTY_BLOCK);
+    }    
+}
 
 void main(void)
 {
@@ -352,8 +367,13 @@ lcd_clear();
 define_char(fullBlock,FULL_BLOCK);
 define_char(emptyBlock,EMPTY_BLOCK);
 lcdOn(1);
+lcd_clear();
+
 
     while (1) {  
-          
+        lcd_gotoxy(0,0);
+        scanLine();
+        
+        //printBinarySensor();      
     }
 }
