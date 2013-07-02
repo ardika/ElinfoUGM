@@ -1,15 +1,30 @@
 RAM Allocation
 Variable                                                          Address   Size
 --------------------------------------------------------------------------------
-_base_y                                                           0x0260       4
+white                                                             0x0260       8
+black                                                             0x0268       8
+_base_y                                                           0x0270       4
 
 EEPROM Allocation
 Variable                                                          Address   Size
 --------------------------------------------------------------------------------
+eeSpeed                                                           0x0000       1
+eeKp                                                              0x0001       1
+eeKd                                                              0x0002       1
+eeKi                                                              0x0003       1
+eeWhite                                                           0x0004       8
+eeBlack                                                           0x000C       8
 
 Register Allocation
 Variable                                                          Register  Size
 --------------------------------------------------------------------------------
-_lcd_x                                                            R5           1
-_lcd_y                                                            R4           1
-_lcd_maxx                                                         R7           1
+speed                                                             R5           1
+kp                                                                R4           1
+kd                                                                R7           1
+ki                                                                R6           1
+error                                                             R9           1
+sp                                                                R8           1
+sensor                                                            R11          1
+_lcd_x                                                            R10          1
+_lcd_y                                                            R13          1
+_lcd_maxx                                                         R12          1

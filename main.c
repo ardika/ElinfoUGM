@@ -27,14 +27,17 @@ Data Stack size         : 512
 
 #define ADC_VREF_TYPE 0x60
 
+// definisi tombol-tombol
 #define CMD_UP      PINC.4
 #define CMD_DOWN    PINC.5
 #define CMD_OK      PINC.6
 #define CMD_CANCEL  PINC.7
 
+// Detektor persimpangan jalan
 #define RIGHT_WING  PIND.0
 #define LEFT_WING   PIND.1
 
+// definisi kendali motor
 #define RIGHT_PWM   OCR1AL
 #define LEFT_PWM    OCR1BL
 #define RIGHT_DR1   PORTD.6
@@ -42,7 +45,132 @@ Data Stack size         : 512
 #define LEFT_DR1    PORTD.2
 #define LEFT_DR2    PORTD.3 
 
-// Declare your global variables here
+// definisi custom character LCD
+#define FULL_BLOCK  0
+#define EMPTY_BLOCK 1
+
+
+flash unsigned char fullBlock[8] = {0b11111,
+                                    0b11111,
+                                    0b11111,
+                                    0b11111,
+                                    0b11111,
+                                    0b11111,
+                                    0b11111,
+                                    0b11111};   
+                                    
+flash unsigned char emptyBlock[8] = {0b11111,
+                                     0b10001,
+                                     0b10001,
+                                     0b10001,
+                                     0b10001,
+                                     0b10001,
+                                     0b10001,
+                                     0b11111};
+
+// Variabel-variabel kontrol yang tersimpan di memory non-volatile
+eeprom unsigned char eeSpeed = 255;
+eeprom unsigned char eeKp = 0;
+eeprom unsigned char eeKd = 0;
+eeprom unsigned char eeKi = 0;
+
+// Varibel kepekaan sensor dalam memory non-volaitile
+eeprom unsigned char eeWhite[8] = {0}, eeBlack[8] = {0};
+
+// Varibael-varibel kontrol yang disimpan di memory volatile untuk perhitungan kontrol
+unsigned char speed, kp, kd, ki, error, sp;
+
+// Variabel kepekaan sensor dalam memory volatile untuk perhitungan
+unsigned char white[8] = {0}, black[8] = {0};
+
+// Varibel penyimpan nilai sensor biner, dimana tiap satu sensor nilainya diwakili oleh 1-bit
+// yang merupakan hasil perbandingan pembacaan nilai analog sensor dengan nilai kepekaan sensor
+unsigned char sensor = 0;
+
+/* function used to define user characters */
+void define_char(unsigned char flash *pc,unsigned char char_code)
+{
+    unsigned char i,a;
+    a=(char_code<<3) | 0x40;
+    for (i=0; i<8; i++) lcd_write_byte(a++,*pc++);
+}
+
+
+// Read the 8 most significant bits
+// of the AD conversion result
+unsigned char read_adc(unsigned char adc_input)
+{
+    ADMUX=adc_input | (ADC_VREF_TYPE & 0xff);
+    // Delay needed for the stabilization of the ADC input voltage
+    //delay_us(10);
+    // Start the AD conversion
+    ADCSRA|=0x40;
+    // Wait for the AD conversion to complete
+    while (!(ADCSRA & 0x10));
+        ADCSRA |= 0x10;
+    return ADCH;
+}
+
+
+void scanLine()
+{
+    unsigned char i = 0;      
+    unsigned char adcRead[i];  // Variabel pembacaan nilai ADC          
+    // JUmlah warna putih dan hitam yang terdeteksi oleh sensor
+    unsigned char blackCount = 0, whiteCount = 0;   
+    
+    sensor = 0x00;   // Hapus nilai sensor sebelumnya
+    
+    for (; i<8; i++) {     
+        adcRead[i] = read_adc(i);  // Baca nilai ADC ada bit ke-i
+        if (adcRead[i] > white)  // Jika hasil pembacaan > nilai putih
+            blackCount++;       // Increment jumlah blok hitam yang terbaca
+        else 
+            whiteCount++;      // Increment jumlah blok putih yang terbaca
+    }                   
+    if (whiteCount > blackCount) {  // Banyaknya blok warna putih yang terdeteksi > dari blok warna hitam, maka garis nya adalah hitam
+        for (i=0; i<8; i++) {
+            if (adcRead[i] > white)
+                sensor |= (1<<i);
+        }                                  
+    }
+    else { // Banyaknya blok warna putih yang terdeteksi < dari blok warna hitam, maka garis nya adalah putih
+        for (i=0; i<8; i++) {
+            if (adcRead[i] < black)
+                sensor |= (1<<i);
+        }
+    } 
+}
+
+void loadVariables()
+{
+    unsigned char i = 0;
+    
+    speed = eeSpeed;
+    kp = eeKp;
+    kd = eeKd;
+    ki = eeKi;
+    
+    for (; i<8; i++) {
+        white[i] = eeWhite[i];
+        black[i] = eeBlack[i];    
+    }    
+}
+
+void saveVariables()
+{
+    unsigned char i = 0;
+    
+    eeSpeed = speed;
+    eeKp = kp;
+    eeKd = kd;
+    eeKi = ki;
+    
+    for (; i<8; i++) {
+        eeWhite[i] = white[i];
+        eeBlack[i] = black[i];
+    }
+}
 
 
 void lcdOn(unsigned char on)
@@ -91,20 +219,7 @@ void stop(unsigned char usingPowerBrake)
     
 }
 
-// Read the 8 most significant bits
-// of the AD conversion result
-unsigned char read_adc(unsigned char adc_input)
-{
-    ADMUX=adc_input | (ADC_VREF_TYPE & 0xff);
-    // Delay needed for the stabilization of the ADC input voltage
-    //delay_us(10);
-    // Start the AD conversion
-    ADCSRA|=0x40;
-    // Wait for the AD conversion to complete
-    while (!(ADCSRA & 0x10));
-        ADCSRA |= 0x10;
-    return ADCH;
-}
+
 
 void lcdPutsByte(unsigned char value)
 {
@@ -114,7 +229,7 @@ void lcdPutsByte(unsigned char value)
     lcd_putchar('0' + (value % 10));
 }
 
-void printSensor()
+void printADCSensor()
 {
     lcd_gotoxy(0,0); lcdPutsByte(read_adc(0));
     lcd_gotoxy(4,0); lcdPutsByte(read_adc(1));
@@ -125,6 +240,7 @@ void printSensor()
     lcd_gotoxy(8,1); lcdPutsByte(read_adc(6));
     lcd_gotoxy(12,1); lcdPutsByte(read_adc(7)); 
 }
+
 
 void main(void)
 {
@@ -233,16 +349,11 @@ TWCR=0x00;
 // Characters/line: 16
 lcd_init(16);   
 lcd_clear();
-
-go();
-LEFT_PWM = RIGHT_PWM = 255;
-delay_ms(3000);
-stop(1); 
+define_char(fullBlock,FULL_BLOCK);
+define_char(emptyBlock,EMPTY_BLOCK);
 lcdOn(1);
 
-
-
     while (1) {  
-         
+          
     }
 }
