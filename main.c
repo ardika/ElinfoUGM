@@ -155,7 +155,7 @@ void main(void)
     // Input Capture on Falling Edge
     // Timer1 Overflow Interrupt: Off
     // Input Capture Interrupt: Off
-    // Compare A Match Interrupt: Off
+    // Compare A Match Interrupt: Off                `
     // Compare B Match Interrupt: Off
     TCCR1A=0xA1;
     TCCR1B=0x0B;
@@ -275,29 +275,19 @@ void scanLine()
     unsigned char i = 0;      
     unsigned char adcRead[i];  // Variabel pembacaan nilai ADC          
     // JUmlah warna putih dan hitam yang terdeteksi oleh sensor
-    unsigned char blackCount = 0, whiteCount = 0;  
+    unsigned char blackCount = 0; 
     
     sensor = 0x00;   // Hapus nilai sensor sebelumnya
     
     for (; i<8; i++) {     
         adcRead[i] = read_adc(i);  // Baca nilai ADC ada bit ke-i
-        if (adcRead[i] > whiteMin[i])  // Jika hasil pembacaan > nilai putih
+        if (adcRead[i] > middleVal[i]) {
             blackCount++;       // Increment jumlah blok hitam yang terbaca
-        else 
-            whiteCount++;      // Increment jumlah blok putih yang terbaca
-    }                   
-    if (whiteCount > blackCount) {  // Banyaknya blok warna putih yang terdeteksi > dari blok warna hitam, maka garis nya adalah hitam
-        for (i=0; i<8; i++) {
-            if (adcRead[i] > whiteMin[i])
-                sensor |= (1<<i);
-        }                                  
-    }
-    else { // Banyaknya blok warna putih yang terdeteksi < dari blok warna hitam, maka garis nya adalah putih
-        for (i=0; i<8; i++) {
-            if (adcRead[i] < blackMax[i])
-                sensor |= (1<<i);
+            sensor |= (1<<i);
         }
-    }    
+    }                   
+    if ((8 - blackCount) > 4)   // Jika blok hitam yg terdeteksi banyak, maka garisnya adalah putih
+        sensor ~= sensor;       // Lakukan negasi nilai sensor
     lcdPrintByte(blackCount);   
 }
 
@@ -428,7 +418,6 @@ void blackCalibrating()
     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor    
     unsigned char calibratedBlackMax;  // Nilai hitam maksimal hasil kalibrasi hitam, untuk tiap sensor     
     unsigned char readADC;  // nilai pembacaan ADC 
-    unsigned char tolerance;  // nilai toleransi 
                          
     // Kalibrasi HItam
     for (i=0; i<8; i++) {    
@@ -439,11 +428,7 @@ void blackCalibrating()
             if (readADC > calibratedBlackMax)
                 calibratedBlackMax = readADC;        
         }                   
-        if (calibratedBlackMax < 255)
-            tolerance = (255 - calibratedBlackMax);     // hitung nilai toleransi
-        else
-            tolerance = 0;
-        blackMax[i] = eeBlackMax[i] = (calibratedBlackMax + tolerance);  // simpan nilai kalibarasi di ram sekaligus di eeprom
+        blackMax[i] = eeBlackMax[i] = calibratedBlackMax;  // simpan nilai kalibarasi di ram sekaligus di eeprom
     } 
     
 }
@@ -453,8 +438,7 @@ void whiteCalibrating()
     unsigned char i;
     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor    
     unsigned char calibratedWhiteMin;  // Nilai hitam minimum hasil kalibrasi putih, untuk tiap sensor     
-    unsigned char readADC;  // nilai pembacaan ADC 
-    unsigned char tolerance;  // nilai toleransi 
+    unsigned char readADC;  // nilai pembacaan ADC  
                          
     // Kalibrasi HItam
     for (i=0; i<8; i++) {
@@ -465,11 +449,7 @@ void whiteCalibrating()
             if (readADC < calibratedWhiteMin)
                 calibratedWhiteMin = readADC;        
         }                   
-        if (calibratedWhiteMin > 0)
-            tolerance = calibratedWhiteMin / 2;     // hitung nilai toleransi
-        else
-            tolerance = 0;
-        whiteMin[i] = eeWhiteMin[i] = (calibratedWhiteMin - tolerance);  // simpan nilai kalibarasi di ram sekaligus di eeprom
+        whiteMin[i] = eeWhiteMin[i] = calibratedWhiteMin;  // simpan nilai kalibarasi di ram sekaligus di eeprom
     } 
 }
 
