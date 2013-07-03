@@ -78,9 +78,9 @@ eeprom unsigned char eeKd = 0;
 eeprom unsigned char eeKi = 0;
 
 // Varibel kepekaan sensor dalam memory non-volaitile
-eeprom unsigned char eeWhiteMin[8] = {0};   // Nilai pembacaan minimal untuk putih
-eeprom unsigned char eeBlackMax[8] = {0};  // Nilai pembacaan maksimal untuk hitam
-eeprom unsigned char eeMiddleVal[8] = {0};   // Nilai tengah antara white min dan black max
+eeprom unsigned char eeWhiteMin[8] = {10};   // Nilai pembacaan minimal untuk putih
+eeprom unsigned char eeBlackMax[8] = {220};  // Nilai pembacaan maksimal untuk hitam
+eeprom unsigned char eeMiddleVal[8] = {105};   // Nilai tengah antara white min dan black max
 
 // Varibael-varibel kontrol yang disimpan di memory volatile untuk perhitungan kontrol
 unsigned char maxSpeed;     // nilai kecepatan maksimal
@@ -269,8 +269,24 @@ unsigned char read_adc(unsigned char adc_input)
     return ADCH;
 }
 
+// Fungsi scan garis aktual dimana nilai pembacaan hitam adalah 1 dan nilai pembacaan putih adalah 0
+void scanLineActual()
+{
+    unsigned char i = 0;
+    
+    for (; i<8; i++) {     
+        adcRead[i] = read_adc(i);  // Baca nilai ADC ada bit ke-i
+        if (adcRead[i] > middleVal[i]) {
+            blackCount++;       // Increment jumlah blok hitam yang terbaca
+            sensor |= (1<<i);
+        }
+    }      
+}
 
-void scanLine()
+
+// Fungsi scan garis relatif dimana garis dibaca secara relatif terhadap perbandingan antara blok hitam dan putih yang terbaca
+// jika blok putih > blok hitam maka garis adalah hitam, sebaihnya garis adalah putih. Garis tetap dibaca sebagai bit set/1 
+void scanLineRelative()
 {
     unsigned char i = 0;      
     unsigned char adcRead[i];  // Variabel pembacaan nilai ADC          
@@ -287,8 +303,7 @@ void scanLine()
         }
     }                   
     if ((8 - blackCount) > 4)   // Jika blok hitam yg terdeteksi banyak, maka garisnya adalah putih
-        sensor ~= sensor;       // Lakukan negasi nilai sensor
-    lcdPrintByte(blackCount);   
+        sensor ~= sensor;       // Lakukan negasi nilai sensor    
 }
 
 void loadVariables()
@@ -302,7 +317,8 @@ void loadVariables()
     
     for (; i<8; i++) {  
         whiteMin[i] = eeWhiteMin[i];
-        blackMax[i] = eeBlackMax[i];    
+        blackMax[i] = eeBlackMax[i]; 
+        middleVal[i] = eeMiddleVal[i];   
     }    
 }
 
@@ -317,7 +333,8 @@ void saveVariables()
     
     for (; i<8; i++) {
         eeWhiteMin[i] = whiteMin[i];
-        eeBlackMax[i] = blackMax[i];
+        eeBlackMax[i] = blackMax[i];  
+        eeMiddleVal[i] = middleVal[i];
     }
 }
 
