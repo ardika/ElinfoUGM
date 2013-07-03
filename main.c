@@ -119,6 +119,7 @@ void whiteCalibrating();
 void blackCalibrating();
 void applyCalibratedValue();
 void pid();
+void scanLineActual();
 
 
 void main(void)
@@ -272,14 +273,14 @@ unsigned char read_adc(unsigned char adc_input)
 // Fungsi scan garis aktual dimana nilai pembacaan hitam adalah 1 dan nilai pembacaan putih adalah 0
 void scanLineActual()
 {
-    unsigned char i = 0;
+    unsigned char i = 0;    
+    unsigned char adcRead;   
     
+    sensor = 0;   // reset nilai sensor    
     for (; i<8; i++) {     
-        adcRead[i] = read_adc(i);  // Baca nilai ADC ada bit ke-i
-        if (adcRead[i] > middleVal[i]) {
-            blackCount++;       // Increment jumlah blok hitam yang terbaca
+        adcRead = read_adc(i);  // Baca nilai ADC ada bit ke-i
+        if (adcRead > middleVal[i]) 
             sensor |= (1<<i);
-        }
     }      
 }
 
@@ -289,21 +290,21 @@ void scanLineActual()
 void scanLineRelative()
 {
     unsigned char i = 0;      
-    unsigned char adcRead[i];  // Variabel pembacaan nilai ADC          
+    unsigned char adcRead;  // Variabel pembacaan nilai ADC          
     // JUmlah warna putih dan hitam yang terdeteksi oleh sensor
     unsigned char blackCount = 0; 
     
     sensor = 0x00;   // Hapus nilai sensor sebelumnya
     
     for (; i<8; i++) {     
-        adcRead[i] = read_adc(i);  // Baca nilai ADC ada bit ke-i
-        if (adcRead[i] > middleVal[i]) {
+        adcRead = read_adc(i);  // Baca nilai ADC ada bit ke-i
+        if (adcRead > middleVal[i]) {
             blackCount++;       // Increment jumlah blok hitam yang terbaca
             sensor |= (1<<i);
         }
     }                   
     if ((8 - blackCount) > 4)   // Jika blok hitam yg terdeteksi banyak, maka garisnya adalah putih
-        sensor ~= sensor;       // Lakukan negasi nilai sensor    
+        sensor = ~sensor;       // Lakukan negasi nilai sensor    
 }
 
 void loadVariables()

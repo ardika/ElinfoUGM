@@ -1114,7 +1114,7 @@ _fullBlock:
 _emptyBlock:
 	.DB  0x1F,0x11,0x11,0x11,0x11,0x11,0x11,0x1F
 
-_0x6A:
+_0x60:
 	.DB  0x0
 _0x2000003:
 	.DB  0x80,0xC0
@@ -1122,7 +1122,7 @@ _0x2000003:
 __GLOBAL_INI_TBL:
 	.DW  0x01
 	.DW  0x0B
-	.DW  _0x6A*2
+	.DW  _0x60*2
 
 	.DW  0x02
 	.DW  __base_y_G100
@@ -1299,9 +1299,9 @@ __GLOBAL_INI_END:
 ;eeprom unsigned char eeKi = 0;
 ;
 ;// Varibel kepekaan sensor dalam memory non-volaitile
-;eeprom unsigned char eeWhiteMin[8] = {0};   // Nilai pembacaan minimal untuk putih
-;eeprom unsigned char eeBlackMax[8] = {0};  // Nilai pembacaan maksimal untuk hitam
-;eeprom unsigned char eeMiddleVal[8] = {0};   // Nilai tengah antara white min dan black max
+;eeprom unsigned char eeWhiteMin[8] = {10};   // Nilai pembacaan minimal untuk putih
+;eeprom unsigned char eeBlackMax[8] = {220};  // Nilai pembacaan maksimal untuk hitam
+;eeprom unsigned char eeMiddleVal[8] = {105};   // Nilai tengah antara white min dan black max
 ;
 ;// Varibael-varibel kontrol yang disimpan di memory volatile untuk perhitungan kontrol
 ;unsigned char maxSpeed;     // nilai kecepatan maksimal
@@ -1340,217 +1340,218 @@ __GLOBAL_INI_END:
 ;void blackCalibrating();
 ;void applyCalibratedValue();
 ;void pid();
+;void scanLineActual();
 ;
 ;
 ;void main(void)
-; 0000 007D {
+; 0000 007E {
 
 	.CSEG
 _main:
-; 0000 007E 
-; 0000 007F     PORTA=0x00;
+; 0000 007F 
+; 0000 0080     PORTA=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x1B,R30
-; 0000 0080     DDRA=0x00;
+; 0000 0081     DDRA=0x00;
 	OUT  0x1A,R30
-; 0000 0081 
-; 0000 0082     PORTB=0xFF;
+; 0000 0082 
+; 0000 0083     PORTB=0xFF;
 	LDI  R30,LOW(255)
 	OUT  0x18,R30
-; 0000 0083     DDRB=0xFF;
+; 0000 0084     DDRB=0xFF;
 	OUT  0x17,R30
-; 0000 0084 
-; 0000 0085     PORTC=0x00;
+; 0000 0085 
+; 0000 0086     PORTC=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x15,R30
-; 0000 0086     DDRC=0x00;
+; 0000 0087     DDRC=0x00;
 	OUT  0x14,R30
-; 0000 0087 
-; 0000 0088     PORTD=0x00;
+; 0000 0088 
+; 0000 0089     PORTD=0x00;
 	OUT  0x12,R30
-; 0000 0089     DDRD=0xFC;
+; 0000 008A     DDRD=0xFC;
 	LDI  R30,LOW(252)
 	OUT  0x11,R30
-; 0000 008A 
-; 0000 008B     // Timer/Counter 0 initialization
-; 0000 008C     // Clock source: System Clock
-; 0000 008D     // Clock value: 2000.000 kHz
-; 0000 008E     // Mode: Fast PWM top=0xFF
-; 0000 008F     // OC0 output: Disconnected
-; 0000 0090     TCCR0=0x4A;
+; 0000 008B 
+; 0000 008C     // Timer/Counter 0 initialization
+; 0000 008D     // Clock source: System Clock
+; 0000 008E     // Clock value: 2000.000 kHz
+; 0000 008F     // Mode: Fast PWM top=0xFF
+; 0000 0090     // OC0 output: Disconnected
+; 0000 0091     TCCR0=0x4A;
 	LDI  R30,LOW(74)
 	OUT  0x33,R30
-; 0000 0091     TCNT0=0x00;
+; 0000 0092     TCNT0=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x32,R30
-; 0000 0092     OCR0=0x0F;
+; 0000 0093     OCR0=0x0F;
 	LDI  R30,LOW(15)
 	OUT  0x3C,R30
-; 0000 0093 
-; 0000 0094     // Timer/Counter 1 initialization
-; 0000 0095     // Clock source: System Clock
-; 0000 0096     // Clock value: 250.000 kHz
-; 0000 0097     // Mode: Fast PWM top=0x00FF
-; 0000 0098     // OC1A output: Non-Inv.
-; 0000 0099     // OC1B output: Non-Inv.
-; 0000 009A     // Noise Canceler: Off
-; 0000 009B     // Input Capture on Falling Edge
-; 0000 009C     // Timer1 Overflow Interrupt: Off
-; 0000 009D     // Input Capture Interrupt: Off
-; 0000 009E     // Compare A Match Interrupt: Off
-; 0000 009F     // Compare B Match Interrupt: Off
-; 0000 00A0     TCCR1A=0xA1;
+; 0000 0094 
+; 0000 0095     // Timer/Counter 1 initialization
+; 0000 0096     // Clock source: System Clock
+; 0000 0097     // Clock value: 250.000 kHz
+; 0000 0098     // Mode: Fast PWM top=0x00FF
+; 0000 0099     // OC1A output: Non-Inv.
+; 0000 009A     // OC1B output: Non-Inv.
+; 0000 009B     // Noise Canceler: Off
+; 0000 009C     // Input Capture on Falling Edge
+; 0000 009D     // Timer1 Overflow Interrupt: Off
+; 0000 009E     // Input Capture Interrupt: Off
+; 0000 009F     // Compare A Match Interrupt: Off                `
+; 0000 00A0     // Compare B Match Interrupt: Off
+; 0000 00A1     TCCR1A=0xA1;
 	LDI  R30,LOW(161)
 	OUT  0x2F,R30
-; 0000 00A1     TCCR1B=0x0B;
+; 0000 00A2     TCCR1B=0x0B;
 	LDI  R30,LOW(11)
 	OUT  0x2E,R30
-; 0000 00A2     TCNT1H=0x00;
+; 0000 00A3     TCNT1H=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x2D,R30
-; 0000 00A3     TCNT1L=0x00;
+; 0000 00A4     TCNT1L=0x00;
 	OUT  0x2C,R30
-; 0000 00A4     ICR1H=0x00;
+; 0000 00A5     ICR1H=0x00;
 	OUT  0x27,R30
-; 0000 00A5     ICR1L=0x00;
+; 0000 00A6     ICR1L=0x00;
 	OUT  0x26,R30
-; 0000 00A6     OCR1AH=0x00;
+; 0000 00A7     OCR1AH=0x00;
 	OUT  0x2B,R30
-; 0000 00A7     OCR1AL=0x00;
+; 0000 00A8     OCR1AL=0x00;
 	OUT  0x2A,R30
-; 0000 00A8     OCR1BH=0x00;
+; 0000 00A9     OCR1BH=0x00;
 	OUT  0x29,R30
-; 0000 00A9     OCR1BL=0x00;
+; 0000 00AA     OCR1BL=0x00;
 	OUT  0x28,R30
-; 0000 00AA 
-; 0000 00AB     // Timer/Counter 2 initialization
-; 0000 00AC     // Clock source: System Clock
-; 0000 00AD     // Clock value: Timer2 Stopped
-; 0000 00AE     // Mode: Normal top=0xFF
-; 0000 00AF     // OC2 output: Disconnected
-; 0000 00B0     ASSR=0x00;
+; 0000 00AB 
+; 0000 00AC     // Timer/Counter 2 initialization
+; 0000 00AD     // Clock source: System Clock
+; 0000 00AE     // Clock value: Timer2 Stopped
+; 0000 00AF     // Mode: Normal top=0xFF
+; 0000 00B0     // OC2 output: Disconnected
+; 0000 00B1     ASSR=0x00;
 	OUT  0x22,R30
-; 0000 00B1     TCCR2=0x00;
+; 0000 00B2     TCCR2=0x00;
 	OUT  0x25,R30
-; 0000 00B2     TCNT2=0x00;
+; 0000 00B3     TCNT2=0x00;
 	OUT  0x24,R30
-; 0000 00B3     OCR2=0x00;
+; 0000 00B4     OCR2=0x00;
 	OUT  0x23,R30
-; 0000 00B4 
-; 0000 00B5     // External Interrupt(s) initialization
-; 0000 00B6     // INT0: Off
-; 0000 00B7     // INT1: Off
-; 0000 00B8     // INT2: Off
-; 0000 00B9     MCUCR=0x00;
+; 0000 00B5 
+; 0000 00B6     // External Interrupt(s) initialization
+; 0000 00B7     // INT0: Off
+; 0000 00B8     // INT1: Off
+; 0000 00B9     // INT2: Off
+; 0000 00BA     MCUCR=0x00;
 	OUT  0x35,R30
-; 0000 00BA     MCUCSR=0x00;
+; 0000 00BB     MCUCSR=0x00;
 	OUT  0x34,R30
-; 0000 00BB 
-; 0000 00BC     // Timer(s)/Counter(s) Interrupt(s) initialization
-; 0000 00BD     TIMSK=0x00;
+; 0000 00BC 
+; 0000 00BD     // Timer(s)/Counter(s) Interrupt(s) initialization
+; 0000 00BE     TIMSK=0x00;
 	OUT  0x39,R30
-; 0000 00BE 
-; 0000 00BF     // USART initialization
-; 0000 00C0     // USART disabled
-; 0000 00C1     UCSRB=0x00;
+; 0000 00BF 
+; 0000 00C0     // USART initialization
+; 0000 00C1     // USART disabled
+; 0000 00C2     UCSRB=0x00;
 	OUT  0xA,R30
-; 0000 00C2 
-; 0000 00C3     // Analog Comparator initialization
-; 0000 00C4     // Analog Comparator: Off
-; 0000 00C5     // Analog Comparator Input Capture by Timer/Counter 1: Off
-; 0000 00C6     ACSR=0x80;
+; 0000 00C3 
+; 0000 00C4     // Analog Comparator initialization
+; 0000 00C5     // Analog Comparator: Off
+; 0000 00C6     // Analog Comparator Input Capture by Timer/Counter 1: Off
+; 0000 00C7     ACSR=0x80;
 	LDI  R30,LOW(128)
 	OUT  0x8,R30
-; 0000 00C7     SFIOR=0x00;
+; 0000 00C8     SFIOR=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x30,R30
-; 0000 00C8 
-; 0000 00C9     // ADC initialization
-; 0000 00CA     // ADC Clock frequency: 125.000 kHz
-; 0000 00CB     // ADC Voltage Reference: AVCC pin
-; 0000 00CC     // Only the 8 most significant bits of
-; 0000 00CD     // the AD conversion result are used
-; 0000 00CE     ADMUX=ADC_VREF_TYPE & 0xff;
+; 0000 00C9 
+; 0000 00CA     // ADC initialization
+; 0000 00CB     // ADC Clock frequency: 125.000 kHz
+; 0000 00CC     // ADC Voltage Reference: AVCC pin
+; 0000 00CD     // Only the 8 most significant bits of
+; 0000 00CE     // the AD conversion result are used
+; 0000 00CF     ADMUX=ADC_VREF_TYPE & 0xff;
 	LDI  R30,LOW(96)
 	OUT  0x7,R30
-; 0000 00CF     ADCSRA=0x87;
+; 0000 00D0     ADCSRA=0x87;
 	LDI  R30,LOW(135)
 	OUT  0x6,R30
-; 0000 00D0 
-; 0000 00D1     // SPI initialization
-; 0000 00D2     // SPI disabled
-; 0000 00D3     SPCR=0x00;
+; 0000 00D1 
+; 0000 00D2     // SPI initialization
+; 0000 00D3     // SPI disabled
+; 0000 00D4     SPCR=0x00;
 	LDI  R30,LOW(0)
 	OUT  0xD,R30
-; 0000 00D4 
-; 0000 00D5     // TWI initialization
-; 0000 00D6     // TWI disabled
-; 0000 00D7     TWCR=0x00;
+; 0000 00D5 
+; 0000 00D6     // TWI initialization
+; 0000 00D7     // TWI disabled
+; 0000 00D8     TWCR=0x00;
 	OUT  0x36,R30
-; 0000 00D8 
 ; 0000 00D9 
-; 0000 00DA     // Alphanumeric LCD initialization
-; 0000 00DB     // Connections are specified in the
-; 0000 00DC     // Project|Configure|C Compiler|Libraries|Alphanumeric LCD menu:
-; 0000 00DD     // RS - PORTB Bit 0
-; 0000 00DE     // RD - PORTB Bit 1
-; 0000 00DF     // EN - PORTB Bit 2
-; 0000 00E0     // D4 - PORTB Bit 4
-; 0000 00E1     // D5 - PORTB Bit 5
-; 0000 00E2     // D6 - PORTB Bit 6
-; 0000 00E3     // D7 - PORTB Bit 7
-; 0000 00E4     // Characters/line: 16
-; 0000 00E5     lcd_init(16);
+; 0000 00DA 
+; 0000 00DB     // Alphanumeric LCD initialization
+; 0000 00DC     // Connections are specified in the
+; 0000 00DD     // Project|Configure|C Compiler|Libraries|Alphanumeric LCD menu:
+; 0000 00DE     // RS - PORTB Bit 0
+; 0000 00DF     // RD - PORTB Bit 1
+; 0000 00E0     // EN - PORTB Bit 2
+; 0000 00E1     // D4 - PORTB Bit 4
+; 0000 00E2     // D5 - PORTB Bit 5
+; 0000 00E3     // D6 - PORTB Bit 6
+; 0000 00E4     // D7 - PORTB Bit 7
+; 0000 00E5     // Characters/line: 16
+; 0000 00E6     lcd_init(16);
 	LDI  R26,LOW(16)
 	RCALL _lcd_init
-; 0000 00E6     lcd_clear();
+; 0000 00E7     lcd_clear();
 	RCALL _lcd_clear
-; 0000 00E7     define_char(fullBlock,FULL_BLOCK);
+; 0000 00E8     define_char(fullBlock,FULL_BLOCK);
 	LDI  R30,LOW(_fullBlock*2)
 	LDI  R31,HIGH(_fullBlock*2)
 	ST   -Y,R31
 	ST   -Y,R30
 	LDI  R26,LOW(0)
 	RCALL _define_char
-; 0000 00E8     define_char(emptyBlock,EMPTY_BLOCK);
+; 0000 00E9     define_char(emptyBlock,EMPTY_BLOCK);
 	LDI  R30,LOW(_emptyBlock*2)
 	LDI  R31,HIGH(_emptyBlock*2)
 	ST   -Y,R31
 	ST   -Y,R30
 	LDI  R26,LOW(1)
 	RCALL _define_char
-; 0000 00E9     lcdOn(1);
+; 0000 00EA     lcdOn(1);
 	LDI  R26,LOW(1)
 	RCALL _lcdOn
-; 0000 00EA     lcd_clear();
+; 0000 00EB     lcd_clear();
 	RCALL _lcd_clear
-; 0000 00EB 
-; 0000 00EC     loadVariables();
+; 0000 00EC 
+; 0000 00ED     loadVariables();
 	RCALL _loadVariables
-; 0000 00ED 
-; 0000 00EE     while (1) {
+; 0000 00EE 
+; 0000 00EF     while (1) {
 _0x3:
-; 0000 00EF         lcd_gotoxy(0,0);
+; 0000 00F0         lcd_gotoxy(0,0);
 	LDI  R30,LOW(0)
 	RCALL SUBOPT_0x0
-; 0000 00F0         printADCSensor();
+; 0000 00F1         printADCSensor();
 	RCALL _printADCSensor
-; 0000 00F1         //scanLine();
-; 0000 00F2         //printBinarySensor();
-; 0000 00F3 
-; 0000 00F4     }
+; 0000 00F2         //scanLine();
+; 0000 00F3         //printBinarySensor();
+; 0000 00F4 
+; 0000 00F5     }
 	RJMP _0x3
-; 0000 00F5 }
+; 0000 00F6 }
 _0x6:
 	RJMP _0x6
 ;
 ;
 ;/* function used to define user characters */
 ;void define_char(unsigned char flash *pc,unsigned char char_code)
-; 0000 00FA {
+; 0000 00FB {
 _define_char:
-; 0000 00FB     unsigned char i,a;
-; 0000 00FC     a=(char_code<<3) | 0x40;
+; 0000 00FC     unsigned char i,a;
+; 0000 00FD     a=(char_code<<3) | 0x40;
 	ST   -Y,R26
 	ST   -Y,R17
 	ST   -Y,R16
@@ -1564,7 +1565,7 @@ _define_char:
 	LSL  R30
 	ORI  R30,0x40
 	MOV  R16,R30
-; 0000 00FD     for (i=0; i<8; i++) lcd_write_byte(a++,*pc++);
+; 0000 00FE     for (i=0; i<8; i++) lcd_write_byte(a++,*pc++);
 	LDI  R17,LOW(0)
 _0x8:
 	CPI  R17,8
@@ -1582,7 +1583,7 @@ _0x8:
 	SUBI R17,-1
 	RJMP _0x8
 _0x9:
-; 0000 00FE }
+; 0000 00FF }
 	LDD  R17,Y+1
 	LDD  R16,Y+0
 	ADIW R28,5
@@ -1592,73 +1593,79 @@ _0x9:
 ;// Read the 8 most significant bits
 ;// of the AD conversion result
 ;unsigned char read_adc(unsigned char adc_input)
-; 0000 0104 {
+; 0000 0105 {
 _read_adc:
-; 0000 0105     ADMUX=adc_input | (ADC_VREF_TYPE & 0xff);
+; 0000 0106     ADMUX=adc_input | (ADC_VREF_TYPE & 0xff);
 	ST   -Y,R26
 ;	adc_input -> Y+0
 	LD   R30,Y
 	ORI  R30,LOW(0x60)
 	OUT  0x7,R30
-; 0000 0106     // Delay needed for the stabilization of the ADC input voltage
-; 0000 0107     //delay_us(10);
-; 0000 0108     // Start the AD conversion
-; 0000 0109     ADCSRA|=0x40;
+; 0000 0107     // Delay needed for the stabilization of the ADC input voltage
+; 0000 0108     //delay_us(10);
+; 0000 0109     // Start the AD conversion
+; 0000 010A     ADCSRA|=0x40;
 	SBI  0x6,6
-; 0000 010A     // Wait for the AD conversion to complete
-; 0000 010B     while (!(ADCSRA & 0x10));
+; 0000 010B     // Wait for the AD conversion to complete
+; 0000 010C     while (!(ADCSRA & 0x10));
 _0xA:
 	SBIS 0x6,4
 	RJMP _0xA
-; 0000 010C         ADCSRA |= 0x10;
+; 0000 010D         ADCSRA |= 0x10;
 	SBI  0x6,4
-; 0000 010D     return ADCH;
+; 0000 010E     return ADCH;
 	IN   R30,0x5
 	RJMP _0x2020001
-; 0000 010E }
+; 0000 010F }
 ;
-;
-;void scanLine()
-; 0000 0112 {
-; 0000 0113     unsigned char i = 0;
-; 0000 0114     unsigned char adcRead[i];  // Variabel pembacaan nilai ADC
-; 0000 0115     // JUmlah warna putih dan hitam yang terdeteksi oleh sensor
-; 0000 0116     unsigned char blackCount = 0, whiteCount = 0;
-; 0000 0117 
-; 0000 0118     sensor = 0x00;   // Hapus nilai sensor sebelumnya
+;// Fungsi scan garis aktual dimana nilai pembacaan hitam adalah 1 dan nilai pembacaan putih adalah 0
+;void scanLineActual()
+; 0000 0113 {
+; 0000 0114     unsigned char i = 0;
+; 0000 0115     unsigned char adcRead;
+; 0000 0116 
+; 0000 0117     sensor = 0;   // reset nilai sensor
 ;	i -> R17
-;	adcRead -> Y+4
-;	blackCount -> R16
-;	whiteCount -> R19
-; 0000 0119 
-; 0000 011A     for (; i<8; i++) {
-; 0000 011B         adcRead[i] = read_adc(i);  // Baca nilai ADC ada bit ke-i
-; 0000 011C         if (adcRead[i] > whiteMin[i])  // Jika hasil pembacaan > nilai putih
-; 0000 011D             blackCount++;       // Increment jumlah blok hitam yang terbaca
-; 0000 011E         else
-; 0000 011F             whiteCount++;      // Increment jumlah blok putih yang terbaca
-; 0000 0120     }
-; 0000 0121     if (whiteCount > blackCount) {  // Banyaknya blok warna putih yang terdeteksi > dari blok warna hitam, maka garis nya adalah hitam
-; 0000 0122         for (i=0; i<8; i++) {
-; 0000 0123             if (adcRead[i] > whiteMin[i])
-; 0000 0124                 sensor |= (1<<i);
-; 0000 0125         }
-; 0000 0126     }
-; 0000 0127     else { // Banyaknya blok warna putih yang terdeteksi < dari blok warna hitam, maka garis nya adalah putih
-; 0000 0128         for (i=0; i<8; i++) {
-; 0000 0129             if (adcRead[i] < blackMax[i])
-; 0000 012A                 sensor |= (1<<i);
-; 0000 012B         }
-; 0000 012C     }
-; 0000 012D     lcdPrintByte(blackCount);
-; 0000 012E }
+;	adcRead -> R16
+; 0000 0118     for (; i<8; i++) {
+; 0000 0119         adcRead = read_adc(i);  // Baca nilai ADC ada bit ke-i
+; 0000 011A         if (adcRead > middleVal[i])
+; 0000 011B             sensor |= (1<<i);
+; 0000 011C     }
+; 0000 011D }
+;
+;
+;// Fungsi scan garis relatif dimana garis dibaca secara relatif terhadap perbandingan antara blok hitam dan putih yang terbaca
+;// jika blok putih > blok hitam maka garis adalah hitam, sebaihnya garis adalah putih. Garis tetap dibaca sebagai bit set/1
+;void scanLineRelative()
+; 0000 0123 {
+; 0000 0124     unsigned char i = 0;
+; 0000 0125     unsigned char adcRead;  // Variabel pembacaan nilai ADC
+; 0000 0126     // JUmlah warna putih dan hitam yang terdeteksi oleh sensor
+; 0000 0127     unsigned char blackCount = 0;
+; 0000 0128 
+; 0000 0129     sensor = 0x00;   // Hapus nilai sensor sebelumnya
+;	i -> R17
+;	adcRead -> R16
+;	blackCount -> R19
+; 0000 012A 
+; 0000 012B     for (; i<8; i++) {
+; 0000 012C         adcRead = read_adc(i);  // Baca nilai ADC ada bit ke-i
+; 0000 012D         if (adcRead > middleVal[i]) {
+; 0000 012E             blackCount++;       // Increment jumlah blok hitam yang terbaca
+; 0000 012F             sensor |= (1<<i);
+; 0000 0130         }
+; 0000 0131     }
+; 0000 0132     if ((8 - blackCount) > 4)   // Jika blok hitam yg terdeteksi banyak, maka garisnya adalah putih
+; 0000 0133         sensor = ~sensor;       // Lakukan negasi nilai sensor
+; 0000 0134 }
 ;
 ;void loadVariables()
-; 0000 0131 {
+; 0000 0137 {
 _loadVariables:
-; 0000 0132     unsigned char i = 0;
-; 0000 0133 
-; 0000 0134     maxSpeed = eeMaxSpeed;
+; 0000 0138     unsigned char i = 0;
+; 0000 0139 
+; 0000 013A     maxSpeed = eeMaxSpeed;
 	ST   -Y,R17
 ;	i -> R17
 	LDI  R17,0
@@ -1666,143 +1673,142 @@ _loadVariables:
 	LDI  R27,HIGH(_eeMaxSpeed)
 	CALL __EEPROMRDB
 	MOV  R5,R30
-; 0000 0135     kp = eeKp;
+; 0000 013B     kp = eeKp;
 	LDI  R26,LOW(_eeKp)
 	LDI  R27,HIGH(_eeKp)
 	CALL __EEPROMRDB
 	MOV  R4,R30
-; 0000 0136     kd = eeKd;
+; 0000 013C     kd = eeKd;
 	LDI  R26,LOW(_eeKd)
 	LDI  R27,HIGH(_eeKd)
 	CALL __EEPROMRDB
 	MOV  R7,R30
-; 0000 0137     ki = eeKi;
+; 0000 013D     ki = eeKi;
 	LDI  R26,LOW(_eeKi)
 	LDI  R27,HIGH(_eeKi)
 	CALL __EEPROMRDB
 	MOV  R6,R30
-; 0000 0138 
-; 0000 0139     for (; i<8; i++) {
-_0x1D:
+; 0000 013E 
+; 0000 013F     for (; i<8; i++) {
+_0x17:
 	CPI  R17,8
-	BRSH _0x1E
-; 0000 013A         whiteMin[i] = eeWhiteMin[i];
-	MOV  R30,R17
-	LDI  R31,0
+	BRSH _0x18
+; 0000 0140         whiteMin[i] = eeWhiteMin[i];
+	RCALL SUBOPT_0x1
 	SUBI R30,LOW(-_whiteMin)
 	SBCI R31,HIGH(-_whiteMin)
-	MOVW R0,R30
-	MOV  R26,R17
-	LDI  R27,0
+	RCALL SUBOPT_0x2
 	SUBI R26,LOW(-_eeWhiteMin)
 	SBCI R27,HIGH(-_eeWhiteMin)
-	CALL __EEPROMRDB
-	MOVW R26,R0
-	ST   X,R30
-; 0000 013B         blackMax[i] = eeBlackMax[i];
-	MOV  R30,R17
-	LDI  R31,0
+	RCALL SUBOPT_0x3
+; 0000 0141         blackMax[i] = eeBlackMax[i];
 	SUBI R30,LOW(-_blackMax)
 	SBCI R31,HIGH(-_blackMax)
-	MOVW R0,R30
-	MOV  R26,R17
-	LDI  R27,0
+	RCALL SUBOPT_0x2
 	SUBI R26,LOW(-_eeBlackMax)
 	SBCI R27,HIGH(-_eeBlackMax)
+	RCALL SUBOPT_0x3
+; 0000 0142         middleVal[i] = eeMiddleVal[i];
+	SUBI R30,LOW(-_middleVal)
+	SBCI R31,HIGH(-_middleVal)
+	RCALL SUBOPT_0x2
+	SUBI R26,LOW(-_eeMiddleVal)
+	SBCI R27,HIGH(-_eeMiddleVal)
 	CALL __EEPROMRDB
 	MOVW R26,R0
 	ST   X,R30
-; 0000 013C     }
+; 0000 0143     }
 	SUBI R17,-1
-	RJMP _0x1D
-_0x1E:
-; 0000 013D }
+	RJMP _0x17
+_0x18:
+; 0000 0144 }
 	LD   R17,Y+
 	RET
 ;
 ;void saveVariables()
-; 0000 0140 {
-; 0000 0141     unsigned char i = 0;
-; 0000 0142 
-; 0000 0143     eeMaxSpeed = maxSpeed;
+; 0000 0147 {
+; 0000 0148     unsigned char i = 0;
+; 0000 0149 
+; 0000 014A     eeMaxSpeed = maxSpeed;
 ;	i -> R17
-; 0000 0144     eeKp = kp;
-; 0000 0145     eeKd = kd;
-; 0000 0146     eeKi = ki;
-; 0000 0147 
-; 0000 0148     for (; i<8; i++) {
-; 0000 0149         eeWhiteMin[i] = whiteMin[i];
-; 0000 014A         eeBlackMax[i] = blackMax[i];
-; 0000 014B     }
-; 0000 014C }
+; 0000 014B     eeKp = kp;
+; 0000 014C     eeKd = kd;
+; 0000 014D     eeKi = ki;
+; 0000 014E 
+; 0000 014F     for (; i<8; i++) {
+; 0000 0150         eeWhiteMin[i] = whiteMin[i];
+; 0000 0151         eeBlackMax[i] = blackMax[i];
+; 0000 0152         eeMiddleVal[i] = middleVal[i];
+; 0000 0153     }
+; 0000 0154 }
 ;
 ;
 ;void lcdOn(unsigned char on)
-; 0000 0150 {
+; 0000 0158 {
 _lcdOn:
-; 0000 0151     PORTB.3 = on;
+; 0000 0159     PORTB.3 = on;
 	ST   -Y,R26
 ;	on -> Y+0
 	LD   R30,Y
 	CPI  R30,0
-	BRNE _0x22
+	BRNE _0x1C
 	CBI  0x18,3
-	RJMP _0x23
-_0x22:
+	RJMP _0x1D
+_0x1C:
 	SBI  0x18,3
-_0x23:
-; 0000 0152 }
+_0x1D:
+; 0000 015A }
 	RJMP _0x2020001
 ;
 ;void lcdOnWing()
-; 0000 0155 {
-; 0000 0156     PORTB.3 = !((LEFT_WING) | (RIGHT_WING));
-; 0000 0157 }
+; 0000 015D {
+; 0000 015E     PORTB.3 = !((LEFT_WING) | (RIGHT_WING));
+; 0000 015F }
 ;
 ;void go()
-; 0000 015A {
-; 0000 015B     RIGHT_DR1 = 0; RIGHT_DR2 = 1;
-; 0000 015C     LEFT_DR1 = 0; LEFT_DR2 = 1;
-; 0000 015D }
+; 0000 0162 {
+; 0000 0163     RIGHT_DR1 = 0; RIGHT_DR2 = 1;
+; 0000 0164     LEFT_DR1 = 0; LEFT_DR2 = 1;
+; 0000 0165 }
 ;
 ;void back()
-; 0000 0160 {
-; 0000 0161     RIGHT_DR1 = 1; RIGHT_DR2 = 0;
-; 0000 0162     LEFT_DR1 = 1; LEFT_DR2 = 0;
-; 0000 0163 }
+; 0000 0168 {
+; 0000 0169     RIGHT_DR1 = 1; RIGHT_DR2 = 0;
+; 0000 016A     LEFT_DR1 = 1; LEFT_DR2 = 0;
+; 0000 016B }
 ;
 ;void left()
-; 0000 0166 {
-; 0000 0167     RIGHT_DR1 = 0; RIGHT_DR2 = 1;
-; 0000 0168     LEFT_DR1 = 0; LEFT_DR2 = 0;
-; 0000 0169 }
+; 0000 016E {
+; 0000 016F     RIGHT_DR1 = 0; RIGHT_DR2 = 1;
+; 0000 0170     LEFT_DR1 = 0; LEFT_DR2 = 0;
+; 0000 0171 }
 ;
 ;void right()
-; 0000 016C {
-; 0000 016D     RIGHT_DR1 = 0; RIGHT_DR2 = 0;
-; 0000 016E     LEFT_DR1 = 0; LEFT_DR2 = 1;
-; 0000 016F }
+; 0000 0174 {
+; 0000 0175     RIGHT_DR1 = 0; RIGHT_DR2 = 0;
+; 0000 0176     LEFT_DR1 = 0; LEFT_DR2 = 1;
+; 0000 0177 }
 ;
 ;void stop(unsigned char usingPowerBrake)
-; 0000 0172 {
-; 0000 0173     RIGHT_DR1 = RIGHT_DR2 = LEFT_DR1 = LEFT_DR2 = 0;
+; 0000 017A {
+; 0000 017B     RIGHT_DR1 = RIGHT_DR2 = LEFT_DR1 = LEFT_DR2 = 0;
 ;	usingPowerBrake -> Y+0
-; 0000 0174     if (usingPowerBrake) {
-; 0000 0175         back();
-; 0000 0176         LEFT_PWM = RIGHT_PWM = 255;
-; 0000 0177         delay_ms(100);
-; 0000 0178         LEFT_PWM = RIGHT_PWM = 0;
-; 0000 0179     }
-; 0000 017A 
-; 0000 017B }
+; 0000 017C     if (usingPowerBrake) {
+; 0000 017D         back();
+; 0000 017E         LEFT_PWM = RIGHT_PWM = 255;
+; 0000 017F         delay_ms(100);
+; 0000 0180         LEFT_PWM = RIGHT_PWM = 0;
+; 0000 0181     }
+; 0000 0182 
+; 0000 0183 }
 ;
 ;
 ;
 ;void lcdPrintByte(unsigned char value)
-; 0000 0180 {
+; 0000 0188 {
 _lcdPrintByte:
-; 0000 0181     unsigned char ten = (value % 100) / 10;
-; 0000 0182     lcd_putchar('0' + (value / 100));
+; 0000 0189     unsigned char ten = (value % 100) / 10;
+; 0000 018A     lcd_putchar('0' + (value / 100));
 	ST   -Y,R26
 	ST   -Y,R17
 ;	value -> Y+1
@@ -1825,11 +1831,11 @@ _lcdPrintByte:
 	SUBI R30,-LOW(48)
 	MOV  R26,R30
 	RCALL _lcd_putchar
-; 0000 0183     lcd_putchar('0' + ten);
+; 0000 018B     lcd_putchar('0' + ten);
 	MOV  R26,R17
 	SUBI R26,-LOW(48)
 	RCALL _lcd_putchar
-; 0000 0184     lcd_putchar('0' + (value % 10));
+; 0000 018C     lcd_putchar('0' + (value % 10));
 	LDD  R26,Y+1
 	CLR  R27
 	LDI  R30,LOW(10)
@@ -1838,68 +1844,68 @@ _lcdPrintByte:
 	SUBI R30,-LOW(48)
 	MOV  R26,R30
 	RCALL _lcd_putchar
-; 0000 0185 }
+; 0000 018D }
 	LDD  R17,Y+0
 	RJMP _0x2020002
 ;
 ;void printADCSensor()
-; 0000 0188 {
+; 0000 0190 {
 _printADCSensor:
-; 0000 0189     lcd_gotoxy(0,0); lcdPrintByte(read_adc(0));
+; 0000 0191     lcd_gotoxy(0,0); lcdPrintByte(read_adc(0));
 	LDI  R30,LOW(0)
 	RCALL SUBOPT_0x0
 	LDI  R26,LOW(0)
-	RCALL SUBOPT_0x1
-; 0000 018A     lcd_gotoxy(4,0); lcdPrintByte(read_adc(1));
+	RCALL SUBOPT_0x4
+; 0000 0192     lcd_gotoxy(4,0); lcdPrintByte(read_adc(1));
 	LDI  R30,LOW(4)
 	RCALL SUBOPT_0x0
 	LDI  R26,LOW(1)
-	RCALL SUBOPT_0x1
-; 0000 018B     lcd_gotoxy(8,0); lcdPrintByte(read_adc(2));
+	RCALL SUBOPT_0x4
+; 0000 0193     lcd_gotoxy(8,0); lcdPrintByte(read_adc(2));
 	LDI  R30,LOW(8)
 	RCALL SUBOPT_0x0
 	LDI  R26,LOW(2)
-	RCALL SUBOPT_0x1
-; 0000 018C     lcd_gotoxy(12,0); lcdPrintByte(read_adc(3));
+	RCALL SUBOPT_0x4
+; 0000 0194     lcd_gotoxy(12,0); lcdPrintByte(read_adc(3));
 	LDI  R30,LOW(12)
 	RCALL SUBOPT_0x0
 	LDI  R26,LOW(3)
-	RCALL SUBOPT_0x1
-; 0000 018D     lcd_gotoxy(0,1); lcdPrintByte(read_adc(4));
+	RCALL SUBOPT_0x4
+; 0000 0195     lcd_gotoxy(0,1); lcdPrintByte(read_adc(4));
 	LDI  R30,LOW(0)
-	RCALL SUBOPT_0x2
+	RCALL SUBOPT_0x5
 	LDI  R26,LOW(4)
-	RCALL SUBOPT_0x1
-; 0000 018E     lcd_gotoxy(4,1); lcdPrintByte(read_adc(5));
+	RCALL SUBOPT_0x4
+; 0000 0196     lcd_gotoxy(4,1); lcdPrintByte(read_adc(5));
 	LDI  R30,LOW(4)
-	RCALL SUBOPT_0x2
+	RCALL SUBOPT_0x5
 	LDI  R26,LOW(5)
-	RCALL SUBOPT_0x1
-; 0000 018F     lcd_gotoxy(8,1); lcdPrintByte(read_adc(6));
+	RCALL SUBOPT_0x4
+; 0000 0197     lcd_gotoxy(8,1); lcdPrintByte(read_adc(6));
 	LDI  R30,LOW(8)
-	RCALL SUBOPT_0x2
+	RCALL SUBOPT_0x5
 	LDI  R26,LOW(6)
-	RCALL SUBOPT_0x1
-; 0000 0190     lcd_gotoxy(12,1); lcdPrintByte(read_adc(7));
+	RCALL SUBOPT_0x4
+; 0000 0198     lcd_gotoxy(12,1); lcdPrintByte(read_adc(7));
 	LDI  R30,LOW(12)
-	RCALL SUBOPT_0x2
+	RCALL SUBOPT_0x5
 	LDI  R26,LOW(7)
-	RCALL SUBOPT_0x1
-; 0000 0191 }
+	RCALL SUBOPT_0x4
+; 0000 0199 }
 	RET
 ;
 ;void printBinarySensor()
-; 0000 0194 {
-; 0000 0195     unsigned char i = 0;
-; 0000 0196 
-; 0000 0197     for (; i<8; i++) {
+; 0000 019C {
+; 0000 019D     unsigned char i = 0;
+; 0000 019E 
+; 0000 019F     for (; i<8; i++) {
 ;	i -> R17
-; 0000 0198         if (sensor & (1<<i))
-; 0000 0199             lcd_putchar(FULL_BLOCK);
-; 0000 019A         else
-; 0000 019B             lcd_putchar(EMPTY_BLOCK);
-; 0000 019C     }
-; 0000 019D }
+; 0000 01A0         if (sensor & (1<<i))
+; 0000 01A1             lcd_putchar(FULL_BLOCK);
+; 0000 01A2         else
+; 0000 01A3             lcd_putchar(EMPTY_BLOCK);
+; 0000 01A4     }
+; 0000 01A5 }
 ;
 ;
 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1912,82 +1918,70 @@ _printADCSensor:
 ;*/
 ;
 ;void blackCalibrating()
-; 0000 01AA {
-; 0000 01AB     unsigned char i;
-; 0000 01AC     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor
-; 0000 01AD     unsigned char calibratedBlackMax;  // Nilai hitam maksimal hasil kalibrasi hitam, untuk tiap sensor
-; 0000 01AE     unsigned char readADC;  // nilai pembacaan ADC
-; 0000 01AF     unsigned char tolerance;  // nilai toleransi
-; 0000 01B0 
-; 0000 01B1     // Kalibrasi HItam
-; 0000 01B2     for (i=0; i<8; i++) {
+; 0000 01B2 {
+; 0000 01B3     unsigned char i;
+; 0000 01B4     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor
+; 0000 01B5     unsigned char calibratedBlackMax;  // Nilai hitam maksimal hasil kalibrasi hitam, untuk tiap sensor
+; 0000 01B6     unsigned char readADC;  // nilai pembacaan ADC
+; 0000 01B7 
+; 0000 01B8     // Kalibrasi HItam
+; 0000 01B9     for (i=0; i<8; i++) {
 ;	i -> R17
 ;	calibratingCount -> R16
 ;	calibratedBlackMax -> R19
 ;	readADC -> R18
-;	tolerance -> R21
-; 0000 01B3         calibratingCount = CALIBRATING_COUNT;
-; 0000 01B4         calibratedBlackMax = 0;     // Atur nilainya menjadi nilai minimal tipedata unsigned byte, karena kita akan mencari nilai maksimum
-; 0000 01B5         while (calibratingCount--) {
-; 0000 01B6             readADC = read_adc(i);
-; 0000 01B7             if (readADC > calibratedBlackMax)
-; 0000 01B8                 calibratedBlackMax = readADC;
-; 0000 01B9         }
-; 0000 01BA         if (calibratedBlackMax < 255)
-; 0000 01BB             tolerance = (255 - calibratedBlackMax);     // hitung nilai toleransi
-; 0000 01BC         else
-; 0000 01BD             tolerance = 0;
-; 0000 01BE         blackMax[i] = eeBlackMax[i] = (calibratedBlackMax + tolerance);  // simpan nilai kalibarasi di ram sekaligus di eeprom
-; 0000 01BF     }
-; 0000 01C0 
-; 0000 01C1 }
+; 0000 01BA         calibratingCount = CALIBRATING_COUNT;
+; 0000 01BB         calibratedBlackMax = 0;     // Atur nilainya menjadi nilai minimal tipedata unsigned byte, karena kita akan mencari nilai maksimum
+; 0000 01BC         while (calibratingCount--) {
+; 0000 01BD             readADC = read_adc(i);
+; 0000 01BE             if (readADC > calibratedBlackMax)
+; 0000 01BF                 calibratedBlackMax = readADC;
+; 0000 01C0         }
+; 0000 01C1         blackMax[i] = eeBlackMax[i] = calibratedBlackMax;  // simpan nilai kalibarasi di ram sekaligus di eeprom
+; 0000 01C2     }
+; 0000 01C3 
+; 0000 01C4 }
 ;
 ;void whiteCalibrating()
-; 0000 01C4 {
-; 0000 01C5     unsigned char i;
-; 0000 01C6     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor
-; 0000 01C7     unsigned char calibratedWhiteMin;  // Nilai hitam minimum hasil kalibrasi putih, untuk tiap sensor
-; 0000 01C8     unsigned char readADC;  // nilai pembacaan ADC
-; 0000 01C9     unsigned char tolerance;  // nilai toleransi
-; 0000 01CA 
-; 0000 01CB     // Kalibrasi HItam
-; 0000 01CC     for (i=0; i<8; i++) {
+; 0000 01C7 {
+; 0000 01C8     unsigned char i;
+; 0000 01C9     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor
+; 0000 01CA     unsigned char calibratedWhiteMin;  // Nilai hitam minimum hasil kalibrasi putih, untuk tiap sensor
+; 0000 01CB     unsigned char readADC;  // nilai pembacaan ADC
+; 0000 01CC 
+; 0000 01CD     // Kalibrasi HItam
+; 0000 01CE     for (i=0; i<8; i++) {
 ;	i -> R17
 ;	calibratingCount -> R16
 ;	calibratedWhiteMin -> R19
 ;	readADC -> R18
-;	tolerance -> R21
-; 0000 01CD         calibratingCount = CALIBRATING_COUNT;
-; 0000 01CE         calibratedWhiteMin = 255;     // Atur nilainya menjadi nilai maksimal tipedata unsigned byte, karena kita akan mencari nilai minimum
-; 0000 01CF         while (calibratingCount--) {
-; 0000 01D0             readADC = read_adc(i);
-; 0000 01D1             if (readADC < calibratedWhiteMin)
-; 0000 01D2                 calibratedWhiteMin = readADC;
-; 0000 01D3         }
-; 0000 01D4         if (calibratedWhiteMin > 0)
-; 0000 01D5             tolerance = calibratedWhiteMin / 2;     // hitung nilai toleransi
-; 0000 01D6         else
-; 0000 01D7             tolerance = 0;
-; 0000 01D8         whiteMin[i] = eeWhiteMin[i] = (calibratedWhiteMin - tolerance);  // simpan nilai kalibarasi di ram sekaligus di eeprom
-; 0000 01D9     }
-; 0000 01DA }
+; 0000 01CF         calibratingCount = CALIBRATING_COUNT;
+; 0000 01D0         calibratedWhiteMin = 255;     // Atur nilainya menjadi nilai maksimal tipedata unsigned byte, karena kita akan mencari nilai minimum
+; 0000 01D1         while (calibratingCount--) {
+; 0000 01D2             readADC = read_adc(i);
+; 0000 01D3             if (readADC < calibratedWhiteMin)
+; 0000 01D4                 calibratedWhiteMin = readADC;
+; 0000 01D5         }
+; 0000 01D6         whiteMin[i] = eeWhiteMin[i] = calibratedWhiteMin;  // simpan nilai kalibarasi di ram sekaligus di eeprom
+; 0000 01D7     }
+; 0000 01D8 }
 ;
 ;void applyCalibratedValue()
-; 0000 01DD {
-; 0000 01DE     unsigned char i = 0;
-; 0000 01DF 
-; 0000 01E0     for (; i<8; i++)
+; 0000 01DB {
+; 0000 01DC     unsigned char i = 0;
+; 0000 01DD 
+; 0000 01DE     for (; i<8; i++)
 ;	i -> R17
-; 0000 01E1         middleVal[i] = eeMiddleVal[i] = ((blackMax[i] - whiteMin[i]) / 2);
-; 0000 01E2 }
+; 0000 01DF         middleVal[i] = eeMiddleVal[i] = ((blackMax[i] - whiteMin[i]) / 2);
+; 0000 01E0 }
 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;//// END OF REGION CALIBRATING FUNCTIONS ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;
 ;void pid()
-; 0000 01E8 {
-; 0000 01E9 
-; 0000 01EA }
+; 0000 01E6 {
+; 0000 01E7 
+; 0000 01E8 }
 	#ifndef __SLEEP_DEFINED__
 	#define __SLEEP_DEFINED__
 	.EQU __se_bit=0x80
@@ -2055,11 +2049,11 @@ _0x2020002:
 	RET
 _lcd_clear:
 	LDI  R26,LOW(2)
-	RCALL SUBOPT_0x3
+	RCALL SUBOPT_0x6
 	LDI  R26,LOW(12)
 	RCALL __lcd_write_data
 	LDI  R26,LOW(1)
-	RCALL SUBOPT_0x3
+	RCALL SUBOPT_0x6
 	LDI  R30,LOW(0)
 	MOV  R13,R30
 	MOV  R10,R30
@@ -2108,9 +2102,9 @@ _lcd_init:
 	LDI  R26,LOW(20)
 	LDI  R27,0
 	CALL _delay_ms
-	RCALL SUBOPT_0x4
-	RCALL SUBOPT_0x4
-	RCALL SUBOPT_0x4
+	RCALL SUBOPT_0x7
+	RCALL SUBOPT_0x7
+	RCALL SUBOPT_0x7
 	LDI  R26,LOW(32)
 	RCALL __lcd_write_nibble_G100
 	__DELAY_USW 400
@@ -2137,13 +2131,13 @@ _eeKd:
 _eeKi:
 	.DB  0x0
 _eeWhiteMin:
-	.DB  0x0,0x0,0x0,0x0
+	.DB  0xA,0x0,0x0,0x0
 	.DB  0x0,0x0,0x0,0x0
 _eeBlackMax:
-	.DB  0x0,0x0,0x0,0x0
+	.DB  0xDC,0x0,0x0,0x0
 	.DB  0x0,0x0,0x0,0x0
 _eeMiddleVal:
-	.DB  0x0,0x0,0x0,0x0
+	.DB  0x69,0x0,0x0,0x0
 	.DB  0x0,0x0,0x0,0x0
 
 	.DSEG
@@ -2163,27 +2157,47 @@ SUBOPT_0x0:
 	LDI  R26,LOW(0)
 	RJMP _lcd_gotoxy
 
-;OPTIMIZER ADDED SUBROUTINE, CALLED 8 TIMES, CODE SIZE REDUCTION:18 WORDS
+;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES, CODE SIZE REDUCTION:1 WORDS
 SUBOPT_0x1:
+	MOV  R30,R17
+	LDI  R31,0
+	RET
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES, CODE SIZE REDUCTION:3 WORDS
+SUBOPT_0x2:
+	MOVW R0,R30
+	MOV  R26,R17
+	LDI  R27,0
+	RET
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:1 WORDS
+SUBOPT_0x3:
+	CALL __EEPROMRDB
+	MOVW R26,R0
+	ST   X,R30
+	RJMP SUBOPT_0x1
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 8 TIMES, CODE SIZE REDUCTION:18 WORDS
+SUBOPT_0x4:
 	RCALL _read_adc
 	MOV  R26,R30
 	RJMP _lcdPrintByte
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 4 TIMES, CODE SIZE REDUCTION:3 WORDS
-SUBOPT_0x2:
+SUBOPT_0x5:
 	ST   -Y,R30
 	LDI  R26,LOW(1)
 	RJMP _lcd_gotoxy
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:3 WORDS
-SUBOPT_0x3:
+SUBOPT_0x6:
 	RCALL __lcd_write_data
 	LDI  R26,LOW(3)
 	LDI  R27,0
 	JMP  _delay_ms
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES, CODE SIZE REDUCTION:7 WORDS
-SUBOPT_0x4:
+SUBOPT_0x7:
 	LDI  R26,LOW(48)
 	RCALL __lcd_write_nibble_G100
 	__DELAY_USW 400

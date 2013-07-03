@@ -102,9 +102,9 @@
 ;eeprom unsigned char eeKi = 0;
 ;
 ;// Varibel kepekaan sensor dalam memory non-volaitile
-;eeprom unsigned char eeWhiteMin[8] = {0};   // Nilai pembacaan minimal untuk putih
-;eeprom unsigned char eeBlackMax[8] = {0};  // Nilai pembacaan maksimal untuk hitam
-;eeprom unsigned char eeMiddleVal[8] = {0};   // Nilai tengah antara white min dan black max
+;eeprom unsigned char eeWhiteMin[8] = {10};   // Nilai pembacaan minimal untuk putih
+;eeprom unsigned char eeBlackMax[8] = {220};  // Nilai pembacaan maksimal untuk hitam
+;eeprom unsigned char eeMiddleVal[8] = {105};   // Nilai tengah antara white min dan black max
 ;
 ;// Varibael-varibel kontrol yang disimpan di memory volatile untuk perhitungan kontrol
 ;unsigned char maxSpeed;     // nilai kecepatan maksimal
@@ -143,226 +143,227 @@
 ;void blackCalibrating();
 ;void applyCalibratedValue();
 ;void pid();
+;void scanLineActual();
 ;
 ;
 ;void main(void)
-; 0000 007D {
+; 0000 007E {
 
 	.CSEG
 ;PCODE: $0000000D VOL: 0
-; 0000 007E 
-; 0000 007F     PORTA=0x00;
+; 0000 007F 
+; 0000 0080     PORTA=0x00;
 ;PCODE: $0000000E VOL: 0
 ;PCODE: $0000000F VOL: 0
-; 0000 0080     DDRA=0x00;
+; 0000 0081     DDRA=0x00;
 ;PCODE: $00000010 VOL: 0
 ;PCODE: $00000011 VOL: 0
-; 0000 0081 
-; 0000 0082     PORTB=0xFF;
+; 0000 0082 
+; 0000 0083     PORTB=0xFF;
 ;PCODE: $00000012 VOL: 0
 ;PCODE: $00000013 VOL: 0
-; 0000 0083     DDRB=0xFF;
+; 0000 0084     DDRB=0xFF;
 ;PCODE: $00000014 VOL: 0
 ;PCODE: $00000015 VOL: 0
-; 0000 0084 
-; 0000 0085     PORTC=0x00;
+; 0000 0085 
+; 0000 0086     PORTC=0x00;
 ;PCODE: $00000016 VOL: 0
 ;PCODE: $00000017 VOL: 0
-; 0000 0086     DDRC=0x00;
+; 0000 0087     DDRC=0x00;
 ;PCODE: $00000018 VOL: 0
 ;PCODE: $00000019 VOL: 0
-; 0000 0087 
-; 0000 0088     PORTD=0x00;
+; 0000 0088 
+; 0000 0089     PORTD=0x00;
 ;PCODE: $0000001A VOL: 0
 ;PCODE: $0000001B VOL: 0
-; 0000 0089     DDRD=0xFC;
+; 0000 008A     DDRD=0xFC;
 ;PCODE: $0000001C VOL: 0
 ;PCODE: $0000001D VOL: 0
-; 0000 008A 
-; 0000 008B     // Timer/Counter 0 initialization
-; 0000 008C     // Clock source: System Clock
-; 0000 008D     // Clock value: 2000.000 kHz
-; 0000 008E     // Mode: Fast PWM top=0xFF
-; 0000 008F     // OC0 output: Disconnected
-; 0000 0090     TCCR0=0x4A;
+; 0000 008B 
+; 0000 008C     // Timer/Counter 0 initialization
+; 0000 008D     // Clock source: System Clock
+; 0000 008E     // Clock value: 2000.000 kHz
+; 0000 008F     // Mode: Fast PWM top=0xFF
+; 0000 0090     // OC0 output: Disconnected
+; 0000 0091     TCCR0=0x4A;
 ;PCODE: $0000001E VOL: 0
 ;PCODE: $0000001F VOL: 0
-; 0000 0091     TCNT0=0x00;
+; 0000 0092     TCNT0=0x00;
 ;PCODE: $00000020 VOL: 0
 ;PCODE: $00000021 VOL: 0
-; 0000 0092     OCR0=0x0F;
+; 0000 0093     OCR0=0x0F;
 ;PCODE: $00000022 VOL: 0
 ;PCODE: $00000023 VOL: 0
-; 0000 0093 
-; 0000 0094     // Timer/Counter 1 initialization
-; 0000 0095     // Clock source: System Clock
-; 0000 0096     // Clock value: 250.000 kHz
-; 0000 0097     // Mode: Fast PWM top=0x00FF
-; 0000 0098     // OC1A output: Non-Inv.
-; 0000 0099     // OC1B output: Non-Inv.
-; 0000 009A     // Noise Canceler: Off
-; 0000 009B     // Input Capture on Falling Edge
-; 0000 009C     // Timer1 Overflow Interrupt: Off
-; 0000 009D     // Input Capture Interrupt: Off
-; 0000 009E     // Compare A Match Interrupt: Off
-; 0000 009F     // Compare B Match Interrupt: Off
-; 0000 00A0     TCCR1A=0xA1;
+; 0000 0094 
+; 0000 0095     // Timer/Counter 1 initialization
+; 0000 0096     // Clock source: System Clock
+; 0000 0097     // Clock value: 250.000 kHz
+; 0000 0098     // Mode: Fast PWM top=0x00FF
+; 0000 0099     // OC1A output: Non-Inv.
+; 0000 009A     // OC1B output: Non-Inv.
+; 0000 009B     // Noise Canceler: Off
+; 0000 009C     // Input Capture on Falling Edge
+; 0000 009D     // Timer1 Overflow Interrupt: Off
+; 0000 009E     // Input Capture Interrupt: Off
+; 0000 009F     // Compare A Match Interrupt: Off                `
+; 0000 00A0     // Compare B Match Interrupt: Off
+; 0000 00A1     TCCR1A=0xA1;
 ;PCODE: $00000024 VOL: 0
 ;PCODE: $00000025 VOL: 0
-; 0000 00A1     TCCR1B=0x0B;
+; 0000 00A2     TCCR1B=0x0B;
 ;PCODE: $00000026 VOL: 0
 ;PCODE: $00000027 VOL: 0
-; 0000 00A2     TCNT1H=0x00;
+; 0000 00A3     TCNT1H=0x00;
 ;PCODE: $00000028 VOL: 0
 ;PCODE: $00000029 VOL: 0
-; 0000 00A3     TCNT1L=0x00;
+; 0000 00A4     TCNT1L=0x00;
 ;PCODE: $0000002A VOL: 0
 ;PCODE: $0000002B VOL: 0
-; 0000 00A4     ICR1H=0x00;
+; 0000 00A5     ICR1H=0x00;
 ;PCODE: $0000002C VOL: 0
 ;PCODE: $0000002D VOL: 0
-; 0000 00A5     ICR1L=0x00;
+; 0000 00A6     ICR1L=0x00;
 ;PCODE: $0000002E VOL: 0
 ;PCODE: $0000002F VOL: 0
-; 0000 00A6     OCR1AH=0x00;
+; 0000 00A7     OCR1AH=0x00;
 ;PCODE: $00000030 VOL: 0
 ;PCODE: $00000031 VOL: 0
-; 0000 00A7     OCR1AL=0x00;
+; 0000 00A8     OCR1AL=0x00;
 ;PCODE: $00000032 VOL: 0
 ;PCODE: $00000033 VOL: 0
-; 0000 00A8     OCR1BH=0x00;
+; 0000 00A9     OCR1BH=0x00;
 ;PCODE: $00000034 VOL: 0
 ;PCODE: $00000035 VOL: 0
-; 0000 00A9     OCR1BL=0x00;
+; 0000 00AA     OCR1BL=0x00;
 ;PCODE: $00000036 VOL: 0
 ;PCODE: $00000037 VOL: 0
-; 0000 00AA 
-; 0000 00AB     // Timer/Counter 2 initialization
-; 0000 00AC     // Clock source: System Clock
-; 0000 00AD     // Clock value: Timer2 Stopped
-; 0000 00AE     // Mode: Normal top=0xFF
-; 0000 00AF     // OC2 output: Disconnected
-; 0000 00B0     ASSR=0x00;
+; 0000 00AB 
+; 0000 00AC     // Timer/Counter 2 initialization
+; 0000 00AD     // Clock source: System Clock
+; 0000 00AE     // Clock value: Timer2 Stopped
+; 0000 00AF     // Mode: Normal top=0xFF
+; 0000 00B0     // OC2 output: Disconnected
+; 0000 00B1     ASSR=0x00;
 ;PCODE: $00000038 VOL: 0
 ;PCODE: $00000039 VOL: 0
-; 0000 00B1     TCCR2=0x00;
+; 0000 00B2     TCCR2=0x00;
 ;PCODE: $0000003A VOL: 0
 ;PCODE: $0000003B VOL: 0
-; 0000 00B2     TCNT2=0x00;
+; 0000 00B3     TCNT2=0x00;
 ;PCODE: $0000003C VOL: 0
 ;PCODE: $0000003D VOL: 0
-; 0000 00B3     OCR2=0x00;
+; 0000 00B4     OCR2=0x00;
 ;PCODE: $0000003E VOL: 0
 ;PCODE: $0000003F VOL: 0
-; 0000 00B4 
-; 0000 00B5     // External Interrupt(s) initialization
-; 0000 00B6     // INT0: Off
-; 0000 00B7     // INT1: Off
-; 0000 00B8     // INT2: Off
-; 0000 00B9     MCUCR=0x00;
+; 0000 00B5 
+; 0000 00B6     // External Interrupt(s) initialization
+; 0000 00B7     // INT0: Off
+; 0000 00B8     // INT1: Off
+; 0000 00B9     // INT2: Off
+; 0000 00BA     MCUCR=0x00;
 ;PCODE: $00000040 VOL: 0
 ;PCODE: $00000041 VOL: 0
-; 0000 00BA     MCUCSR=0x00;
+; 0000 00BB     MCUCSR=0x00;
 ;PCODE: $00000042 VOL: 0
 ;PCODE: $00000043 VOL: 0
-; 0000 00BB 
-; 0000 00BC     // Timer(s)/Counter(s) Interrupt(s) initialization
-; 0000 00BD     TIMSK=0x00;
+; 0000 00BC 
+; 0000 00BD     // Timer(s)/Counter(s) Interrupt(s) initialization
+; 0000 00BE     TIMSK=0x00;
 ;PCODE: $00000044 VOL: 0
 ;PCODE: $00000045 VOL: 0
-; 0000 00BE 
-; 0000 00BF     // USART initialization
-; 0000 00C0     // USART disabled
-; 0000 00C1     UCSRB=0x00;
+; 0000 00BF 
+; 0000 00C0     // USART initialization
+; 0000 00C1     // USART disabled
+; 0000 00C2     UCSRB=0x00;
 ;PCODE: $00000046 VOL: 0
 ;PCODE: $00000047 VOL: 0
-; 0000 00C2 
-; 0000 00C3     // Analog Comparator initialization
-; 0000 00C4     // Analog Comparator: Off
-; 0000 00C5     // Analog Comparator Input Capture by Timer/Counter 1: Off
-; 0000 00C6     ACSR=0x80;
+; 0000 00C3 
+; 0000 00C4     // Analog Comparator initialization
+; 0000 00C5     // Analog Comparator: Off
+; 0000 00C6     // Analog Comparator Input Capture by Timer/Counter 1: Off
+; 0000 00C7     ACSR=0x80;
 ;PCODE: $00000048 VOL: 0
 ;PCODE: $00000049 VOL: 0
-; 0000 00C7     SFIOR=0x00;
+; 0000 00C8     SFIOR=0x00;
 ;PCODE: $0000004A VOL: 0
 ;PCODE: $0000004B VOL: 0
-; 0000 00C8 
-; 0000 00C9     // ADC initialization
-; 0000 00CA     // ADC Clock frequency: 125.000 kHz
-; 0000 00CB     // ADC Voltage Reference: AVCC pin
-; 0000 00CC     // Only the 8 most significant bits of
-; 0000 00CD     // the AD conversion result are used
-; 0000 00CE     ADMUX=ADC_VREF_TYPE & 0xff;
+; 0000 00C9 
+; 0000 00CA     // ADC initialization
+; 0000 00CB     // ADC Clock frequency: 125.000 kHz
+; 0000 00CC     // ADC Voltage Reference: AVCC pin
+; 0000 00CD     // Only the 8 most significant bits of
+; 0000 00CE     // the AD conversion result are used
+; 0000 00CF     ADMUX=ADC_VREF_TYPE & 0xff;
 ;PCODE: $0000004C VOL: 0
 ;PCODE: $0000004D VOL: 0
-; 0000 00CF     ADCSRA=0x87;
+; 0000 00D0     ADCSRA=0x87;
 ;PCODE: $0000004E VOL: 0
 ;PCODE: $0000004F VOL: 0
-; 0000 00D0 
-; 0000 00D1     // SPI initialization
-; 0000 00D2     // SPI disabled
-; 0000 00D3     SPCR=0x00;
+; 0000 00D1 
+; 0000 00D2     // SPI initialization
+; 0000 00D3     // SPI disabled
+; 0000 00D4     SPCR=0x00;
 ;PCODE: $00000050 VOL: 0
 ;PCODE: $00000051 VOL: 0
-; 0000 00D4 
-; 0000 00D5     // TWI initialization
-; 0000 00D6     // TWI disabled
-; 0000 00D7     TWCR=0x00;
+; 0000 00D5 
+; 0000 00D6     // TWI initialization
+; 0000 00D7     // TWI disabled
+; 0000 00D8     TWCR=0x00;
 ;PCODE: $00000052 VOL: 0
 ;PCODE: $00000053 VOL: 0
-; 0000 00D8 
 ; 0000 00D9 
-; 0000 00DA     // Alphanumeric LCD initialization
-; 0000 00DB     // Connections are specified in the
-; 0000 00DC     // Project|Configure|C Compiler|Libraries|Alphanumeric LCD menu:
-; 0000 00DD     // RS - PORTB Bit 0
-; 0000 00DE     // RD - PORTB Bit 1
-; 0000 00DF     // EN - PORTB Bit 2
-; 0000 00E0     // D4 - PORTB Bit 4
-; 0000 00E1     // D5 - PORTB Bit 5
-; 0000 00E2     // D6 - PORTB Bit 6
-; 0000 00E3     // D7 - PORTB Bit 7
-; 0000 00E4     // Characters/line: 16
-; 0000 00E5     lcd_init(16);
+; 0000 00DA 
+; 0000 00DB     // Alphanumeric LCD initialization
+; 0000 00DC     // Connections are specified in the
+; 0000 00DD     // Project|Configure|C Compiler|Libraries|Alphanumeric LCD menu:
+; 0000 00DE     // RS - PORTB Bit 0
+; 0000 00DF     // RD - PORTB Bit 1
+; 0000 00E0     // EN - PORTB Bit 2
+; 0000 00E1     // D4 - PORTB Bit 4
+; 0000 00E2     // D5 - PORTB Bit 5
+; 0000 00E3     // D6 - PORTB Bit 6
+; 0000 00E4     // D7 - PORTB Bit 7
+; 0000 00E5     // Characters/line: 16
+; 0000 00E6     lcd_init(16);
 ;PCODE: $00000054 VOL: 0
 ;PCODE: $00000055 VOL: 0
-; 0000 00E6     lcd_clear();
+; 0000 00E7     lcd_clear();
 ;PCODE: $00000056 VOL: 0
-; 0000 00E7     define_char(fullBlock,FULL_BLOCK);
+; 0000 00E8     define_char(fullBlock,FULL_BLOCK);
 ;PCODE: $00000057 VOL: 0
 ;PCODE: $00000058 VOL: 0
 ;PCODE: $00000059 VOL: 0
 ;PCODE: $0000005A VOL: 0
-; 0000 00E8     define_char(emptyBlock,EMPTY_BLOCK);
+; 0000 00E9     define_char(emptyBlock,EMPTY_BLOCK);
 ;PCODE: $0000005B VOL: 0
 ;PCODE: $0000005C VOL: 0
 ;PCODE: $0000005D VOL: 0
 ;PCODE: $0000005E VOL: 0
-; 0000 00E9     lcdOn(1);
+; 0000 00EA     lcdOn(1);
 ;PCODE: $0000005F VOL: 0
 ;PCODE: $00000060 VOL: 0
-; 0000 00EA     lcd_clear();
+; 0000 00EB     lcd_clear();
 ;PCODE: $00000061 VOL: 0
-; 0000 00EB 
-; 0000 00EC     loadVariables();
+; 0000 00EC 
+; 0000 00ED     loadVariables();
 ;PCODE: $00000062 VOL: 0
-; 0000 00ED 
-; 0000 00EE     while (1) {
+; 0000 00EE 
+; 0000 00EF     while (1) {
 ;PCODE: $00000063 VOL: 0
-; 0000 00EF         lcd_gotoxy(0,0);
+; 0000 00F0         lcd_gotoxy(0,0);
 ;PCODE: $00000064 VOL: 0
 ;PCODE: $00000065 VOL: 0
 ;PCODE: $00000066 VOL: 0
 ;PCODE: $00000067 VOL: 0
-; 0000 00F0         printADCSensor();
+; 0000 00F1         printADCSensor();
 ;PCODE: $00000068 VOL: 0
-; 0000 00F1         //scanLine();
-; 0000 00F2         //printBinarySensor();
-; 0000 00F3 
-; 0000 00F4     }
+; 0000 00F2         //scanLine();
+; 0000 00F3         //printBinarySensor();
+; 0000 00F4 
+; 0000 00F5     }
 ;PCODE: $00000069 VOL: 0
 ;PCODE: $0000006A VOL: 0
-; 0000 00F5 }
+; 0000 00F6 }
 ;PCODE: $0000006B VOL: 0
 ;PCODE: $0000006C VOL: 0
 ;PCODE: $0000006D VOL: 0
@@ -370,11 +371,11 @@
 ;
 ;/* function used to define user characters */
 ;void define_char(unsigned char flash *pc,unsigned char char_code)
-; 0000 00FA {
+; 0000 00FB {
 ;PCODE: $0000006E VOL: 0
 ;PCODE: $0000006F VOL: 0
-; 0000 00FB     unsigned char i,a;
-; 0000 00FC     a=(char_code<<3) | 0x40;
+; 0000 00FC     unsigned char i,a;
+; 0000 00FD     a=(char_code<<3) | 0x40;
 ;PCODE: $00000070 VOL: 0
 ;PCODE: $00000071 VOL: 0
 ;PCODE: $00000072 VOL: 0
@@ -386,7 +387,7 @@
 ;PCODE: $00000074 VOL: 0
 ;PCODE: $00000075 VOL: 0
 ;PCODE: $00000076 VOL: 0
-; 0000 00FD     for (i=0; i<8; i++) lcd_write_byte(a++,*pc++);
+; 0000 00FE     for (i=0; i<8; i++) lcd_write_byte(a++,*pc++);
 ;PCODE: $00000077 VOL: 0
 ;PCODE: $00000078 VOL: 0
 ;PCODE: $00000079 VOL: 0
@@ -409,7 +410,7 @@
 ;PCODE: $0000008A VOL: 0
 ;PCODE: $0000008B VOL: 0
 ;PCODE: $0000008C VOL: 0
-; 0000 00FE }
+; 0000 00FF }
 ;PCODE: $0000008D VOL: 0
 ;PCODE: $0000008E VOL: 0
 ;PCODE: $0000008F VOL: 0
@@ -422,334 +423,347 @@
 ;// Read the 8 most significant bits
 ;// of the AD conversion result
 ;unsigned char read_adc(unsigned char adc_input)
-; 0000 0104 {
+; 0000 0105 {
 ;PCODE: $00000094 VOL: 0
 ;PCODE: $00000095 VOL: 0
-; 0000 0105     ADMUX=adc_input | (ADC_VREF_TYPE & 0xff);
+; 0000 0106     ADMUX=adc_input | (ADC_VREF_TYPE & 0xff);
 ;PCODE: $00000096 VOL: 0
 ;	adc_input -> Y+0
 ;PCODE: $00000097 VOL: 0
 ;PCODE: $00000098 VOL: 0
 ;PCODE: $00000099 VOL: 0
-; 0000 0106     // Delay needed for the stabilization of the ADC input voltage
-; 0000 0107     //delay_us(10);
-; 0000 0108     // Start the AD conversion
-; 0000 0109     ADCSRA|=0x40;
+; 0000 0107     // Delay needed for the stabilization of the ADC input voltage
+; 0000 0108     //delay_us(10);
+; 0000 0109     // Start the AD conversion
+; 0000 010A     ADCSRA|=0x40;
 ;PCODE: $0000009A VOL: 0
 ;PCODE: $0000009B VOL: 0
-; 0000 010A     // Wait for the AD conversion to complete
-; 0000 010B     while (!(ADCSRA & 0x10));
+; 0000 010B     // Wait for the AD conversion to complete
+; 0000 010C     while (!(ADCSRA & 0x10));
 ;PCODE: $0000009C VOL: 0
 ;PCODE: $0000009D VOL: 0
 ;PCODE: $0000009E VOL: 0
 ;PCODE: $0000009F VOL: 0
 ;PCODE: $000000A0 VOL: 0
 ;PCODE: $000000A1 VOL: 0
-; 0000 010C         ADCSRA |= 0x10;
+; 0000 010D         ADCSRA |= 0x10;
 ;PCODE: $000000A2 VOL: 0
 ;PCODE: $000000A3 VOL: 0
-; 0000 010D     return ADCH;
+; 0000 010E     return ADCH;
 ;PCODE: $000000A4 VOL: 0
 ;PCODE: $000000A5 VOL: 0
 ;PCODE: $000000A6 VOL: 0
-; 0000 010E }
+; 0000 010F }
 ;PCODE: $000000A7 VOL: 0
 ;
-;
-;void scanLine()
-; 0000 0112 {
+;// Fungsi scan garis aktual dimana nilai pembacaan hitam adalah 1 dan nilai pembacaan putih adalah 0
+;void scanLineActual()
+; 0000 0113 {
 ;PCODE: $000000A8 VOL: 0
 ;PCODE: $000000A9 VOL: 0
-; 0000 0113     unsigned char i = 0;
-; 0000 0114     unsigned char adcRead[i];  // Variabel pembacaan nilai ADC
-; 0000 0115     // JUmlah warna putih dan hitam yang terdeteksi oleh sensor
-; 0000 0116     unsigned char blackCount = 0, whiteCount = 0;
-; 0000 0117 
-; 0000 0118     sensor = 0x00;   // Hapus nilai sensor sebelumnya
+; 0000 0114     unsigned char i = 0;
+; 0000 0115     unsigned char adcRead;
+; 0000 0116 
+; 0000 0117     sensor = 0;   // reset nilai sensor
 ;PCODE: $000000AA VOL: 0
-;	i -> R17
-;	adcRead -> Y+4
-;	blackCount -> R16
-;	whiteCount -> R19
 ;PCODE: $000000AB VOL: 0
+;	i -> R17
+;	adcRead -> R16
 ;PCODE: $000000AC VOL: 0
 ;PCODE: $000000AD VOL: 0
 ;PCODE: $000000AE VOL: 0
+; 0000 0118     for (; i<8; i++) {
 ;PCODE: $000000AF VOL: 0
 ;PCODE: $000000B0 VOL: 0
 ;PCODE: $000000B1 VOL: 0
-; 0000 0119 
-; 0000 011A     for (; i<8; i++) {
 ;PCODE: $000000B2 VOL: 0
 ;PCODE: $000000B3 VOL: 0
 ;PCODE: $000000B4 VOL: 0
 ;PCODE: $000000B5 VOL: 0
+; 0000 0119         adcRead = read_adc(i);  // Baca nilai ADC ada bit ke-i
 ;PCODE: $000000B6 VOL: 0
 ;PCODE: $000000B7 VOL: 0
 ;PCODE: $000000B8 VOL: 0
-; 0000 011B         adcRead[i] = read_adc(i);  // Baca nilai ADC ada bit ke-i
+; 0000 011A         if (adcRead > middleVal[i])
 ;PCODE: $000000B9 VOL: 0
 ;PCODE: $000000BA VOL: 0
 ;PCODE: $000000BB VOL: 0
 ;PCODE: $000000BC VOL: 0
 ;PCODE: $000000BD VOL: 0
 ;PCODE: $000000BE VOL: 0
+; 0000 011B             sensor |= (1<<i);
 ;PCODE: $000000BF VOL: 0
 ;PCODE: $000000C0 VOL: 0
 ;PCODE: $000000C1 VOL: 0
-; 0000 011C         if (adcRead[i] > whiteMin[i])  // Jika hasil pembacaan > nilai putih
 ;PCODE: $000000C2 VOL: 0
 ;PCODE: $000000C3 VOL: 0
+; 0000 011C     }
 ;PCODE: $000000C4 VOL: 0
 ;PCODE: $000000C5 VOL: 0
 ;PCODE: $000000C6 VOL: 0
 ;PCODE: $000000C7 VOL: 0
 ;PCODE: $000000C8 VOL: 0
 ;PCODE: $000000C9 VOL: 0
+; 0000 011D }
 ;PCODE: $000000CA VOL: 0
-; 0000 011D             blackCount++;       // Increment jumlah blok hitam yang terbaca
 ;PCODE: $000000CB VOL: 0
 ;PCODE: $000000CC VOL: 0
-; 0000 011E         else
+;
+;
+;// Fungsi scan garis relatif dimana garis dibaca secara relatif terhadap perbandingan antara blok hitam dan putih yang terbaca
+;// jika blok putih > blok hitam maka garis adalah hitam, sebaihnya garis adalah putih. Garis tetap dibaca sebagai bit set/1
+;void scanLineRelative()
+; 0000 0123 {
 ;PCODE: $000000CD VOL: 0
 ;PCODE: $000000CE VOL: 0
-; 0000 011F             whiteCount++;      // Increment jumlah blok putih yang terbaca
+; 0000 0124     unsigned char i = 0;
+; 0000 0125     unsigned char adcRead;  // Variabel pembacaan nilai ADC
+; 0000 0126     // JUmlah warna putih dan hitam yang terdeteksi oleh sensor
+; 0000 0127     unsigned char blackCount = 0;
+; 0000 0128 
+; 0000 0129     sensor = 0x00;   // Hapus nilai sensor sebelumnya
 ;PCODE: $000000CF VOL: 0
+;	i -> R17
+;	adcRead -> R16
+;	blackCount -> R19
 ;PCODE: $000000D0 VOL: 0
-; 0000 0120     }
 ;PCODE: $000000D1 VOL: 0
 ;PCODE: $000000D2 VOL: 0
 ;PCODE: $000000D3 VOL: 0
 ;PCODE: $000000D4 VOL: 0
+; 0000 012A 
+; 0000 012B     for (; i<8; i++) {
 ;PCODE: $000000D5 VOL: 0
 ;PCODE: $000000D6 VOL: 0
-; 0000 0121     if (whiteCount > blackCount) {  // Banyaknya blok warna putih yang terdeteksi > dari blok warna hitam, maka garis nya adalah hitam
 ;PCODE: $000000D7 VOL: 0
 ;PCODE: $000000D8 VOL: 0
 ;PCODE: $000000D9 VOL: 0
-; 0000 0122         for (i=0; i<8; i++) {
 ;PCODE: $000000DA VOL: 0
 ;PCODE: $000000DB VOL: 0
+; 0000 012C         adcRead = read_adc(i);  // Baca nilai ADC ada bit ke-i
 ;PCODE: $000000DC VOL: 0
 ;PCODE: $000000DD VOL: 0
 ;PCODE: $000000DE VOL: 0
+; 0000 012D         if (adcRead > middleVal[i]) {
 ;PCODE: $000000DF VOL: 0
 ;PCODE: $000000E0 VOL: 0
 ;PCODE: $000000E1 VOL: 0
 ;PCODE: $000000E2 VOL: 0
-; 0000 0123             if (adcRead[i] > whiteMin[i])
 ;PCODE: $000000E3 VOL: 0
 ;PCODE: $000000E4 VOL: 0
+; 0000 012E             blackCount++;       // Increment jumlah blok hitam yang terbaca
 ;PCODE: $000000E5 VOL: 0
 ;PCODE: $000000E6 VOL: 0
+; 0000 012F             sensor |= (1<<i);
 ;PCODE: $000000E7 VOL: 0
 ;PCODE: $000000E8 VOL: 0
 ;PCODE: $000000E9 VOL: 0
 ;PCODE: $000000EA VOL: 0
 ;PCODE: $000000EB VOL: 0
-; 0000 0124                 sensor |= (1<<i);
+; 0000 0130         }
+; 0000 0131     }
 ;PCODE: $000000EC VOL: 0
 ;PCODE: $000000ED VOL: 0
 ;PCODE: $000000EE VOL: 0
 ;PCODE: $000000EF VOL: 0
 ;PCODE: $000000F0 VOL: 0
-; 0000 0125         }
 ;PCODE: $000000F1 VOL: 0
+; 0000 0132     if ((8 - blackCount) > 4)   // Jika blok hitam yg terdeteksi banyak, maka garisnya adalah putih
 ;PCODE: $000000F2 VOL: 0
 ;PCODE: $000000F3 VOL: 0
 ;PCODE: $000000F4 VOL: 0
 ;PCODE: $000000F5 VOL: 0
 ;PCODE: $000000F6 VOL: 0
-; 0000 0126     }
-; 0000 0127     else { // Banyaknya blok warna putih yang terdeteksi < dari blok warna hitam, maka garis nya adalah putih
 ;PCODE: $000000F7 VOL: 0
+; 0000 0133         sensor = ~sensor;       // Lakukan negasi nilai sensor
 ;PCODE: $000000F8 VOL: 0
-; 0000 0128         for (i=0; i<8; i++) {
+; 0000 0134 }
 ;PCODE: $000000F9 VOL: 0
 ;PCODE: $000000FA VOL: 0
 ;PCODE: $000000FB VOL: 0
 ;PCODE: $000000FC VOL: 0
 ;PCODE: $000000FD VOL: 0
+;
+;void loadVariables()
+; 0000 0137 {
 ;PCODE: $000000FE VOL: 0
 ;PCODE: $000000FF VOL: 0
+; 0000 0138     unsigned char i = 0;
+; 0000 0139 
+; 0000 013A     maxSpeed = eeMaxSpeed;
 ;PCODE: $00000100 VOL: 0
+;	i -> R17
 ;PCODE: $00000101 VOL: 0
-; 0000 0129             if (adcRead[i] < blackMax[i])
 ;PCODE: $00000102 VOL: 0
 ;PCODE: $00000103 VOL: 0
 ;PCODE: $00000104 VOL: 0
 ;PCODE: $00000105 VOL: 0
+; 0000 013B     kp = eeKp;
 ;PCODE: $00000106 VOL: 0
 ;PCODE: $00000107 VOL: 0
 ;PCODE: $00000108 VOL: 0
+; 0000 013C     kd = eeKd;
 ;PCODE: $00000109 VOL: 0
 ;PCODE: $0000010A VOL: 0
-; 0000 012A                 sensor |= (1<<i);
 ;PCODE: $0000010B VOL: 0
+; 0000 013D     ki = eeKi;
 ;PCODE: $0000010C VOL: 0
 ;PCODE: $0000010D VOL: 0
 ;PCODE: $0000010E VOL: 0
+; 0000 013E 
+; 0000 013F     for (; i<8; i++) {
 ;PCODE: $0000010F VOL: 0
-; 0000 012B         }
 ;PCODE: $00000110 VOL: 0
 ;PCODE: $00000111 VOL: 0
 ;PCODE: $00000112 VOL: 0
 ;PCODE: $00000113 VOL: 0
 ;PCODE: $00000114 VOL: 0
 ;PCODE: $00000115 VOL: 0
-; 0000 012C     }
+; 0000 0140         whiteMin[i] = eeWhiteMin[i];
 ;PCODE: $00000116 VOL: 0
-; 0000 012D     lcdPrintByte(blackCount);
 ;PCODE: $00000117 VOL: 0
 ;PCODE: $00000118 VOL: 0
-; 0000 012E }
 ;PCODE: $00000119 VOL: 0
 ;PCODE: $0000011A VOL: 0
 ;PCODE: $0000011B VOL: 0
 ;PCODE: $0000011C VOL: 0
-;
-;void loadVariables()
-; 0000 0131 {
 ;PCODE: $0000011D VOL: 0
 ;PCODE: $0000011E VOL: 0
-; 0000 0132     unsigned char i = 0;
-; 0000 0133 
-; 0000 0134     maxSpeed = eeMaxSpeed;
 ;PCODE: $0000011F VOL: 0
-;	i -> R17
+; 0000 0141         blackMax[i] = eeBlackMax[i];
 ;PCODE: $00000120 VOL: 0
 ;PCODE: $00000121 VOL: 0
 ;PCODE: $00000122 VOL: 0
 ;PCODE: $00000123 VOL: 0
 ;PCODE: $00000124 VOL: 0
-; 0000 0135     kp = eeKp;
 ;PCODE: $00000125 VOL: 0
 ;PCODE: $00000126 VOL: 0
 ;PCODE: $00000127 VOL: 0
-; 0000 0136     kd = eeKd;
 ;PCODE: $00000128 VOL: 0
 ;PCODE: $00000129 VOL: 0
+; 0000 0142         middleVal[i] = eeMiddleVal[i];
 ;PCODE: $0000012A VOL: 0
-; 0000 0137     ki = eeKi;
 ;PCODE: $0000012B VOL: 0
 ;PCODE: $0000012C VOL: 0
 ;PCODE: $0000012D VOL: 0
-; 0000 0138 
-; 0000 0139     for (; i<8; i++) {
 ;PCODE: $0000012E VOL: 0
 ;PCODE: $0000012F VOL: 0
 ;PCODE: $00000130 VOL: 0
 ;PCODE: $00000131 VOL: 0
 ;PCODE: $00000132 VOL: 0
 ;PCODE: $00000133 VOL: 0
+; 0000 0143     }
 ;PCODE: $00000134 VOL: 0
-; 0000 013A         whiteMin[i] = eeWhiteMin[i];
 ;PCODE: $00000135 VOL: 0
 ;PCODE: $00000136 VOL: 0
 ;PCODE: $00000137 VOL: 0
 ;PCODE: $00000138 VOL: 0
+; 0000 0144 }
 ;PCODE: $00000139 VOL: 0
 ;PCODE: $0000013A VOL: 0
 ;PCODE: $0000013B VOL: 0
+;
+;void saveVariables()
+; 0000 0147 {
 ;PCODE: $0000013C VOL: 0
 ;PCODE: $0000013D VOL: 0
+; 0000 0148     unsigned char i = 0;
+; 0000 0149 
+; 0000 014A     eeMaxSpeed = maxSpeed;
 ;PCODE: $0000013E VOL: 0
-; 0000 013B         blackMax[i] = eeBlackMax[i];
+;	i -> R17
 ;PCODE: $0000013F VOL: 0
 ;PCODE: $00000140 VOL: 0
 ;PCODE: $00000141 VOL: 0
 ;PCODE: $00000142 VOL: 0
 ;PCODE: $00000143 VOL: 0
+; 0000 014B     eeKp = kp;
 ;PCODE: $00000144 VOL: 0
 ;PCODE: $00000145 VOL: 0
 ;PCODE: $00000146 VOL: 0
+; 0000 014C     eeKd = kd;
 ;PCODE: $00000147 VOL: 0
 ;PCODE: $00000148 VOL: 0
-; 0000 013C     }
 ;PCODE: $00000149 VOL: 0
+; 0000 014D     eeKi = ki;
 ;PCODE: $0000014A VOL: 0
 ;PCODE: $0000014B VOL: 0
 ;PCODE: $0000014C VOL: 0
+; 0000 014E 
+; 0000 014F     for (; i<8; i++) {
 ;PCODE: $0000014D VOL: 0
-; 0000 013D }
 ;PCODE: $0000014E VOL: 0
 ;PCODE: $0000014F VOL: 0
 ;PCODE: $00000150 VOL: 0
-;
-;void saveVariables()
-; 0000 0140 {
 ;PCODE: $00000151 VOL: 0
 ;PCODE: $00000152 VOL: 0
-; 0000 0141     unsigned char i = 0;
-; 0000 0142 
-; 0000 0143     eeMaxSpeed = maxSpeed;
 ;PCODE: $00000153 VOL: 0
-;	i -> R17
+; 0000 0150         eeWhiteMin[i] = whiteMin[i];
 ;PCODE: $00000154 VOL: 0
 ;PCODE: $00000155 VOL: 0
 ;PCODE: $00000156 VOL: 0
 ;PCODE: $00000157 VOL: 0
 ;PCODE: $00000158 VOL: 0
-; 0000 0144     eeKp = kp;
 ;PCODE: $00000159 VOL: 0
 ;PCODE: $0000015A VOL: 0
 ;PCODE: $0000015B VOL: 0
-; 0000 0145     eeKd = kd;
+; 0000 0151         eeBlackMax[i] = blackMax[i];
 ;PCODE: $0000015C VOL: 0
 ;PCODE: $0000015D VOL: 0
 ;PCODE: $0000015E VOL: 0
-; 0000 0146     eeKi = ki;
 ;PCODE: $0000015F VOL: 0
 ;PCODE: $00000160 VOL: 0
 ;PCODE: $00000161 VOL: 0
-; 0000 0147 
-; 0000 0148     for (; i<8; i++) {
 ;PCODE: $00000162 VOL: 0
 ;PCODE: $00000163 VOL: 0
+; 0000 0152         eeMiddleVal[i] = middleVal[i];
 ;PCODE: $00000164 VOL: 0
 ;PCODE: $00000165 VOL: 0
 ;PCODE: $00000166 VOL: 0
 ;PCODE: $00000167 VOL: 0
 ;PCODE: $00000168 VOL: 0
-; 0000 0149         eeWhiteMin[i] = whiteMin[i];
 ;PCODE: $00000169 VOL: 0
 ;PCODE: $0000016A VOL: 0
 ;PCODE: $0000016B VOL: 0
+; 0000 0153     }
 ;PCODE: $0000016C VOL: 0
 ;PCODE: $0000016D VOL: 0
 ;PCODE: $0000016E VOL: 0
 ;PCODE: $0000016F VOL: 0
 ;PCODE: $00000170 VOL: 0
-; 0000 014A         eeBlackMax[i] = blackMax[i];
+; 0000 0154 }
 ;PCODE: $00000171 VOL: 0
 ;PCODE: $00000172 VOL: 0
 ;PCODE: $00000173 VOL: 0
+;
+;
+;void lcdOn(unsigned char on)
+; 0000 0158 {
 ;PCODE: $00000174 VOL: 0
 ;PCODE: $00000175 VOL: 0
+; 0000 0159     PORTB.3 = on;
 ;PCODE: $00000176 VOL: 0
+;	on -> Y+0
 ;PCODE: $00000177 VOL: 0
 ;PCODE: $00000178 VOL: 0
-; 0000 014B     }
 ;PCODE: $00000179 VOL: 0
 ;PCODE: $0000017A VOL: 0
 ;PCODE: $0000017B VOL: 0
 ;PCODE: $0000017C VOL: 0
 ;PCODE: $0000017D VOL: 0
-; 0000 014C }
 ;PCODE: $0000017E VOL: 0
 ;PCODE: $0000017F VOL: 0
 ;PCODE: $00000180 VOL: 0
-;
-;
-;void lcdOn(unsigned char on)
-; 0000 0150 {
+; 0000 015A }
 ;PCODE: $00000181 VOL: 0
 ;PCODE: $00000182 VOL: 0
-; 0000 0151     PORTB.3 = on;
 ;PCODE: $00000183 VOL: 0
-;	on -> Y+0
+;
+;void lcdOnWing()
+; 0000 015D {
 ;PCODE: $00000184 VOL: 0
 ;PCODE: $00000185 VOL: 0
+; 0000 015E     PORTB.3 = !((LEFT_WING) | (RIGHT_WING));
 ;PCODE: $00000186 VOL: 0
 ;PCODE: $00000187 VOL: 0
 ;PCODE: $00000188 VOL: 0
@@ -758,163 +772,160 @@
 ;PCODE: $0000018B VOL: 0
 ;PCODE: $0000018C VOL: 0
 ;PCODE: $0000018D VOL: 0
-; 0000 0152 }
 ;PCODE: $0000018E VOL: 0
 ;PCODE: $0000018F VOL: 0
 ;PCODE: $00000190 VOL: 0
-;
-;void lcdOnWing()
-; 0000 0155 {
 ;PCODE: $00000191 VOL: 0
 ;PCODE: $00000192 VOL: 0
-; 0000 0156     PORTB.3 = !((LEFT_WING) | (RIGHT_WING));
+; 0000 015F }
 ;PCODE: $00000193 VOL: 0
 ;PCODE: $00000194 VOL: 0
+;
+;void go()
+; 0000 0162 {
 ;PCODE: $00000195 VOL: 0
 ;PCODE: $00000196 VOL: 0
+; 0000 0163     RIGHT_DR1 = 0; RIGHT_DR2 = 1;
 ;PCODE: $00000197 VOL: 0
 ;PCODE: $00000198 VOL: 0
 ;PCODE: $00000199 VOL: 0
 ;PCODE: $0000019A VOL: 0
+; 0000 0164     LEFT_DR1 = 0; LEFT_DR2 = 1;
 ;PCODE: $0000019B VOL: 0
 ;PCODE: $0000019C VOL: 0
 ;PCODE: $0000019D VOL: 0
 ;PCODE: $0000019E VOL: 0
+; 0000 0165 }
 ;PCODE: $0000019F VOL: 0
-; 0000 0157 }
 ;PCODE: $000001A0 VOL: 0
-;PCODE: $000001A1 VOL: 0
 ;
-;void go()
-; 0000 015A {
+;void back()
+; 0000 0168 {
+;PCODE: $000001A1 VOL: 0
 ;PCODE: $000001A2 VOL: 0
+; 0000 0169     RIGHT_DR1 = 1; RIGHT_DR2 = 0;
 ;PCODE: $000001A3 VOL: 0
-; 0000 015B     RIGHT_DR1 = 0; RIGHT_DR2 = 1;
 ;PCODE: $000001A4 VOL: 0
 ;PCODE: $000001A5 VOL: 0
 ;PCODE: $000001A6 VOL: 0
+; 0000 016A     LEFT_DR1 = 1; LEFT_DR2 = 0;
 ;PCODE: $000001A7 VOL: 0
-; 0000 015C     LEFT_DR1 = 0; LEFT_DR2 = 1;
 ;PCODE: $000001A8 VOL: 0
 ;PCODE: $000001A9 VOL: 0
 ;PCODE: $000001AA VOL: 0
+; 0000 016B }
 ;PCODE: $000001AB VOL: 0
-; 0000 015D }
 ;PCODE: $000001AC VOL: 0
-;PCODE: $000001AD VOL: 0
 ;
-;void back()
-; 0000 0160 {
+;void left()
+; 0000 016E {
+;PCODE: $000001AD VOL: 0
 ;PCODE: $000001AE VOL: 0
+; 0000 016F     RIGHT_DR1 = 0; RIGHT_DR2 = 1;
 ;PCODE: $000001AF VOL: 0
-; 0000 0161     RIGHT_DR1 = 1; RIGHT_DR2 = 0;
 ;PCODE: $000001B0 VOL: 0
 ;PCODE: $000001B1 VOL: 0
 ;PCODE: $000001B2 VOL: 0
+; 0000 0170     LEFT_DR1 = 0; LEFT_DR2 = 0;
 ;PCODE: $000001B3 VOL: 0
-; 0000 0162     LEFT_DR1 = 1; LEFT_DR2 = 0;
 ;PCODE: $000001B4 VOL: 0
 ;PCODE: $000001B5 VOL: 0
 ;PCODE: $000001B6 VOL: 0
+; 0000 0171 }
 ;PCODE: $000001B7 VOL: 0
-; 0000 0163 }
 ;PCODE: $000001B8 VOL: 0
-;PCODE: $000001B9 VOL: 0
 ;
-;void left()
-; 0000 0166 {
+;void right()
+; 0000 0174 {
+;PCODE: $000001B9 VOL: 0
 ;PCODE: $000001BA VOL: 0
+; 0000 0175     RIGHT_DR1 = 0; RIGHT_DR2 = 0;
 ;PCODE: $000001BB VOL: 0
-; 0000 0167     RIGHT_DR1 = 0; RIGHT_DR2 = 1;
 ;PCODE: $000001BC VOL: 0
 ;PCODE: $000001BD VOL: 0
 ;PCODE: $000001BE VOL: 0
+; 0000 0176     LEFT_DR1 = 0; LEFT_DR2 = 1;
 ;PCODE: $000001BF VOL: 0
-; 0000 0168     LEFT_DR1 = 0; LEFT_DR2 = 0;
 ;PCODE: $000001C0 VOL: 0
 ;PCODE: $000001C1 VOL: 0
 ;PCODE: $000001C2 VOL: 0
+; 0000 0177 }
 ;PCODE: $000001C3 VOL: 0
-; 0000 0169 }
 ;PCODE: $000001C4 VOL: 0
-;PCODE: $000001C5 VOL: 0
 ;
-;void right()
-; 0000 016C {
+;void stop(unsigned char usingPowerBrake)
+; 0000 017A {
+;PCODE: $000001C5 VOL: 0
 ;PCODE: $000001C6 VOL: 0
+; 0000 017B     RIGHT_DR1 = RIGHT_DR2 = LEFT_DR1 = LEFT_DR2 = 0;
 ;PCODE: $000001C7 VOL: 0
-; 0000 016D     RIGHT_DR1 = 0; RIGHT_DR2 = 0;
+;	usingPowerBrake -> Y+0
 ;PCODE: $000001C8 VOL: 0
 ;PCODE: $000001C9 VOL: 0
 ;PCODE: $000001CA VOL: 0
 ;PCODE: $000001CB VOL: 0
-; 0000 016E     LEFT_DR1 = 0; LEFT_DR2 = 1;
 ;PCODE: $000001CC VOL: 0
 ;PCODE: $000001CD VOL: 0
 ;PCODE: $000001CE VOL: 0
 ;PCODE: $000001CF VOL: 0
-; 0000 016F }
+; 0000 017C     if (usingPowerBrake) {
 ;PCODE: $000001D0 VOL: 0
 ;PCODE: $000001D1 VOL: 0
-;
-;void stop(unsigned char usingPowerBrake)
-; 0000 0172 {
 ;PCODE: $000001D2 VOL: 0
+; 0000 017D         back();
 ;PCODE: $000001D3 VOL: 0
-; 0000 0173     RIGHT_DR1 = RIGHT_DR2 = LEFT_DR1 = LEFT_DR2 = 0;
+; 0000 017E         LEFT_PWM = RIGHT_PWM = 255;
 ;PCODE: $000001D4 VOL: 0
-;	usingPowerBrake -> Y+0
 ;PCODE: $000001D5 VOL: 0
 ;PCODE: $000001D6 VOL: 0
+; 0000 017F         delay_ms(100);
 ;PCODE: $000001D7 VOL: 0
 ;PCODE: $000001D8 VOL: 0
 ;PCODE: $000001D9 VOL: 0
+; 0000 0180         LEFT_PWM = RIGHT_PWM = 0;
 ;PCODE: $000001DA VOL: 0
 ;PCODE: $000001DB VOL: 0
 ;PCODE: $000001DC VOL: 0
-; 0000 0174     if (usingPowerBrake) {
+; 0000 0181     }
+; 0000 0182 
+; 0000 0183 }
 ;PCODE: $000001DD VOL: 0
 ;PCODE: $000001DE VOL: 0
 ;PCODE: $000001DF VOL: 0
-; 0000 0175         back();
 ;PCODE: $000001E0 VOL: 0
-; 0000 0176         LEFT_PWM = RIGHT_PWM = 255;
-;PCODE: $000001E1 VOL: 0
-;PCODE: $000001E2 VOL: 0
-;PCODE: $000001E3 VOL: 0
-; 0000 0177         delay_ms(100);
-;PCODE: $000001E4 VOL: 0
-;PCODE: $000001E5 VOL: 0
-;PCODE: $000001E6 VOL: 0
-; 0000 0178         LEFT_PWM = RIGHT_PWM = 0;
-;PCODE: $000001E7 VOL: 0
-;PCODE: $000001E8 VOL: 0
-;PCODE: $000001E9 VOL: 0
-; 0000 0179     }
-; 0000 017A 
-; 0000 017B }
-;PCODE: $000001EA VOL: 0
-;PCODE: $000001EB VOL: 0
-;PCODE: $000001EC VOL: 0
-;PCODE: $000001ED VOL: 0
 ;
 ;
 ;
 ;void lcdPrintByte(unsigned char value)
-; 0000 0180 {
-;PCODE: $000001EE VOL: 0
-;PCODE: $000001EF VOL: 0
-; 0000 0181     unsigned char ten = (value % 100) / 10;
-; 0000 0182     lcd_putchar('0' + (value / 100));
-;PCODE: $000001F0 VOL: 0
-;PCODE: $000001F1 VOL: 0
+; 0000 0188 {
+;PCODE: $000001E1 VOL: 0
+;PCODE: $000001E2 VOL: 0
+; 0000 0189     unsigned char ten = (value % 100) / 10;
+; 0000 018A     lcd_putchar('0' + (value / 100));
+;PCODE: $000001E3 VOL: 0
+;PCODE: $000001E4 VOL: 0
 ;	value -> Y+1
 ;	ten -> R17
+;PCODE: $000001E5 VOL: 0
+;PCODE: $000001E6 VOL: 0
+;PCODE: $000001E7 VOL: 0
+;PCODE: $000001E8 VOL: 0
+;PCODE: $000001E9 VOL: 0
+;PCODE: $000001EA VOL: 0
+;PCODE: $000001EB VOL: 0
+;PCODE: $000001EC VOL: 0
+;PCODE: $000001ED VOL: 0
+;PCODE: $000001EE VOL: 0
+;PCODE: $000001EF VOL: 0
+;PCODE: $000001F0 VOL: 0
+;PCODE: $000001F1 VOL: 0
 ;PCODE: $000001F2 VOL: 0
 ;PCODE: $000001F3 VOL: 0
+; 0000 018B     lcd_putchar('0' + ten);
 ;PCODE: $000001F4 VOL: 0
 ;PCODE: $000001F5 VOL: 0
 ;PCODE: $000001F6 VOL: 0
+; 0000 018C     lcd_putchar('0' + (value % 10));
 ;PCODE: $000001F7 VOL: 0
 ;PCODE: $000001F8 VOL: 0
 ;PCODE: $000001F9 VOL: 0
@@ -922,96 +933,102 @@
 ;PCODE: $000001FB VOL: 0
 ;PCODE: $000001FC VOL: 0
 ;PCODE: $000001FD VOL: 0
+; 0000 018D }
 ;PCODE: $000001FE VOL: 0
 ;PCODE: $000001FF VOL: 0
 ;PCODE: $00000200 VOL: 0
-; 0000 0183     lcd_putchar('0' + ten);
 ;PCODE: $00000201 VOL: 0
 ;PCODE: $00000202 VOL: 0
+;
+;void printADCSensor()
+; 0000 0190 {
 ;PCODE: $00000203 VOL: 0
-; 0000 0184     lcd_putchar('0' + (value % 10));
 ;PCODE: $00000204 VOL: 0
+; 0000 0191     lcd_gotoxy(0,0); lcdPrintByte(read_adc(0));
 ;PCODE: $00000205 VOL: 0
 ;PCODE: $00000206 VOL: 0
 ;PCODE: $00000207 VOL: 0
 ;PCODE: $00000208 VOL: 0
 ;PCODE: $00000209 VOL: 0
 ;PCODE: $0000020A VOL: 0
-; 0000 0185 }
 ;PCODE: $0000020B VOL: 0
 ;PCODE: $0000020C VOL: 0
+; 0000 0192     lcd_gotoxy(4,0); lcdPrintByte(read_adc(1));
 ;PCODE: $0000020D VOL: 0
 ;PCODE: $0000020E VOL: 0
 ;PCODE: $0000020F VOL: 0
-;
-;void printADCSensor()
-; 0000 0188 {
 ;PCODE: $00000210 VOL: 0
 ;PCODE: $00000211 VOL: 0
-; 0000 0189     lcd_gotoxy(0,0); lcdPrintByte(read_adc(0));
 ;PCODE: $00000212 VOL: 0
 ;PCODE: $00000213 VOL: 0
 ;PCODE: $00000214 VOL: 0
+; 0000 0193     lcd_gotoxy(8,0); lcdPrintByte(read_adc(2));
 ;PCODE: $00000215 VOL: 0
 ;PCODE: $00000216 VOL: 0
 ;PCODE: $00000217 VOL: 0
 ;PCODE: $00000218 VOL: 0
 ;PCODE: $00000219 VOL: 0
-; 0000 018A     lcd_gotoxy(4,0); lcdPrintByte(read_adc(1));
 ;PCODE: $0000021A VOL: 0
 ;PCODE: $0000021B VOL: 0
 ;PCODE: $0000021C VOL: 0
+; 0000 0194     lcd_gotoxy(12,0); lcdPrintByte(read_adc(3));
 ;PCODE: $0000021D VOL: 0
 ;PCODE: $0000021E VOL: 0
 ;PCODE: $0000021F VOL: 0
 ;PCODE: $00000220 VOL: 0
 ;PCODE: $00000221 VOL: 0
-; 0000 018B     lcd_gotoxy(8,0); lcdPrintByte(read_adc(2));
 ;PCODE: $00000222 VOL: 0
 ;PCODE: $00000223 VOL: 0
 ;PCODE: $00000224 VOL: 0
+; 0000 0195     lcd_gotoxy(0,1); lcdPrintByte(read_adc(4));
 ;PCODE: $00000225 VOL: 0
 ;PCODE: $00000226 VOL: 0
 ;PCODE: $00000227 VOL: 0
 ;PCODE: $00000228 VOL: 0
 ;PCODE: $00000229 VOL: 0
-; 0000 018C     lcd_gotoxy(12,0); lcdPrintByte(read_adc(3));
 ;PCODE: $0000022A VOL: 0
 ;PCODE: $0000022B VOL: 0
 ;PCODE: $0000022C VOL: 0
+; 0000 0196     lcd_gotoxy(4,1); lcdPrintByte(read_adc(5));
 ;PCODE: $0000022D VOL: 0
 ;PCODE: $0000022E VOL: 0
 ;PCODE: $0000022F VOL: 0
 ;PCODE: $00000230 VOL: 0
 ;PCODE: $00000231 VOL: 0
-; 0000 018D     lcd_gotoxy(0,1); lcdPrintByte(read_adc(4));
 ;PCODE: $00000232 VOL: 0
 ;PCODE: $00000233 VOL: 0
 ;PCODE: $00000234 VOL: 0
+; 0000 0197     lcd_gotoxy(8,1); lcdPrintByte(read_adc(6));
 ;PCODE: $00000235 VOL: 0
 ;PCODE: $00000236 VOL: 0
 ;PCODE: $00000237 VOL: 0
 ;PCODE: $00000238 VOL: 0
 ;PCODE: $00000239 VOL: 0
-; 0000 018E     lcd_gotoxy(4,1); lcdPrintByte(read_adc(5));
 ;PCODE: $0000023A VOL: 0
 ;PCODE: $0000023B VOL: 0
 ;PCODE: $0000023C VOL: 0
+; 0000 0198     lcd_gotoxy(12,1); lcdPrintByte(read_adc(7));
 ;PCODE: $0000023D VOL: 0
 ;PCODE: $0000023E VOL: 0
 ;PCODE: $0000023F VOL: 0
 ;PCODE: $00000240 VOL: 0
 ;PCODE: $00000241 VOL: 0
-; 0000 018F     lcd_gotoxy(8,1); lcdPrintByte(read_adc(6));
 ;PCODE: $00000242 VOL: 0
 ;PCODE: $00000243 VOL: 0
 ;PCODE: $00000244 VOL: 0
+; 0000 0199 }
 ;PCODE: $00000245 VOL: 0
 ;PCODE: $00000246 VOL: 0
+;
+;void printBinarySensor()
+; 0000 019C {
 ;PCODE: $00000247 VOL: 0
 ;PCODE: $00000248 VOL: 0
+; 0000 019D     unsigned char i = 0;
+; 0000 019E 
+; 0000 019F     for (; i<8; i++) {
 ;PCODE: $00000249 VOL: 0
-; 0000 0190     lcd_gotoxy(12,1); lcdPrintByte(read_adc(7));
+;	i -> R17
 ;PCODE: $0000024A VOL: 0
 ;PCODE: $0000024B VOL: 0
 ;PCODE: $0000024C VOL: 0
@@ -1020,57 +1037,36 @@
 ;PCODE: $0000024F VOL: 0
 ;PCODE: $00000250 VOL: 0
 ;PCODE: $00000251 VOL: 0
-; 0000 0191 }
 ;PCODE: $00000252 VOL: 0
+; 0000 01A0         if (sensor & (1<<i))
 ;PCODE: $00000253 VOL: 0
-;
-;void printBinarySensor()
-; 0000 0194 {
 ;PCODE: $00000254 VOL: 0
 ;PCODE: $00000255 VOL: 0
-; 0000 0195     unsigned char i = 0;
-; 0000 0196 
-; 0000 0197     for (; i<8; i++) {
 ;PCODE: $00000256 VOL: 0
-;	i -> R17
 ;PCODE: $00000257 VOL: 0
 ;PCODE: $00000258 VOL: 0
 ;PCODE: $00000259 VOL: 0
 ;PCODE: $0000025A VOL: 0
+; 0000 01A1             lcd_putchar(FULL_BLOCK);
 ;PCODE: $0000025B VOL: 0
 ;PCODE: $0000025C VOL: 0
+; 0000 01A2         else
 ;PCODE: $0000025D VOL: 0
 ;PCODE: $0000025E VOL: 0
+; 0000 01A3             lcd_putchar(EMPTY_BLOCK);
 ;PCODE: $0000025F VOL: 0
-; 0000 0198         if (sensor & (1<<i))
 ;PCODE: $00000260 VOL: 0
+; 0000 01A4     }
 ;PCODE: $00000261 VOL: 0
 ;PCODE: $00000262 VOL: 0
 ;PCODE: $00000263 VOL: 0
 ;PCODE: $00000264 VOL: 0
 ;PCODE: $00000265 VOL: 0
 ;PCODE: $00000266 VOL: 0
+; 0000 01A5 }
 ;PCODE: $00000267 VOL: 0
-; 0000 0199             lcd_putchar(FULL_BLOCK);
 ;PCODE: $00000268 VOL: 0
 ;PCODE: $00000269 VOL: 0
-; 0000 019A         else
-;PCODE: $0000026A VOL: 0
-;PCODE: $0000026B VOL: 0
-; 0000 019B             lcd_putchar(EMPTY_BLOCK);
-;PCODE: $0000026C VOL: 0
-;PCODE: $0000026D VOL: 0
-; 0000 019C     }
-;PCODE: $0000026E VOL: 0
-;PCODE: $0000026F VOL: 0
-;PCODE: $00000270 VOL: 0
-;PCODE: $00000271 VOL: 0
-;PCODE: $00000272 VOL: 0
-;PCODE: $00000273 VOL: 0
-; 0000 019D }
-;PCODE: $00000274 VOL: 0
-;PCODE: $00000275 VOL: 0
-;PCODE: $00000276 VOL: 0
 ;
 ;
 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1083,75 +1079,99 @@
 ;*/
 ;
 ;void blackCalibrating()
-; 0000 01AA {
-;PCODE: $00000277 VOL: 0
-;PCODE: $00000278 VOL: 0
-; 0000 01AB     unsigned char i;
-; 0000 01AC     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor
-; 0000 01AD     unsigned char calibratedBlackMax;  // Nilai hitam maksimal hasil kalibrasi hitam, untuk tiap sensor
-; 0000 01AE     unsigned char readADC;  // nilai pembacaan ADC
-; 0000 01AF     unsigned char tolerance;  // nilai toleransi
-; 0000 01B0 
-; 0000 01B1     // Kalibrasi HItam
-; 0000 01B2     for (i=0; i<8; i++) {
-;PCODE: $00000279 VOL: 0
+; 0000 01B2 {
+;PCODE: $0000026A VOL: 0
+;PCODE: $0000026B VOL: 0
+; 0000 01B3     unsigned char i;
+; 0000 01B4     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor
+; 0000 01B5     unsigned char calibratedBlackMax;  // Nilai hitam maksimal hasil kalibrasi hitam, untuk tiap sensor
+; 0000 01B6     unsigned char readADC;  // nilai pembacaan ADC
+; 0000 01B7 
+; 0000 01B8     // Kalibrasi HItam
+; 0000 01B9     for (i=0; i<8; i++) {
+;PCODE: $0000026C VOL: 0
 ;	i -> R17
 ;	calibratingCount -> R16
 ;	calibratedBlackMax -> R19
 ;	readADC -> R18
-;	tolerance -> R21
+;PCODE: $0000026D VOL: 0
+;PCODE: $0000026E VOL: 0
+;PCODE: $0000026F VOL: 0
+;PCODE: $00000270 VOL: 0
+;PCODE: $00000271 VOL: 0
+;PCODE: $00000272 VOL: 0
+;PCODE: $00000273 VOL: 0
+;PCODE: $00000274 VOL: 0
+;PCODE: $00000275 VOL: 0
+; 0000 01BA         calibratingCount = CALIBRATING_COUNT;
+;PCODE: $00000276 VOL: 0
+;PCODE: $00000277 VOL: 0
+; 0000 01BB         calibratedBlackMax = 0;     // Atur nilainya menjadi nilai minimal tipedata unsigned byte, karena kita akan mencari nilai maksimum
+;PCODE: $00000278 VOL: 0
+;PCODE: $00000279 VOL: 0
+; 0000 01BC         while (calibratingCount--) {
 ;PCODE: $0000027A VOL: 0
 ;PCODE: $0000027B VOL: 0
 ;PCODE: $0000027C VOL: 0
 ;PCODE: $0000027D VOL: 0
 ;PCODE: $0000027E VOL: 0
 ;PCODE: $0000027F VOL: 0
+; 0000 01BD             readADC = read_adc(i);
 ;PCODE: $00000280 VOL: 0
 ;PCODE: $00000281 VOL: 0
 ;PCODE: $00000282 VOL: 0
-; 0000 01B3         calibratingCount = CALIBRATING_COUNT;
+; 0000 01BE             if (readADC > calibratedBlackMax)
 ;PCODE: $00000283 VOL: 0
 ;PCODE: $00000284 VOL: 0
-; 0000 01B4         calibratedBlackMax = 0;     // Atur nilainya menjadi nilai minimal tipedata unsigned byte, karena kita akan mencari nilai maksimum
 ;PCODE: $00000285 VOL: 0
+; 0000 01BF                 calibratedBlackMax = readADC;
 ;PCODE: $00000286 VOL: 0
-; 0000 01B5         while (calibratingCount--) {
 ;PCODE: $00000287 VOL: 0
+; 0000 01C0         }
 ;PCODE: $00000288 VOL: 0
 ;PCODE: $00000289 VOL: 0
 ;PCODE: $0000028A VOL: 0
+; 0000 01C1         blackMax[i] = eeBlackMax[i] = calibratedBlackMax;  // simpan nilai kalibarasi di ram sekaligus di eeprom
 ;PCODE: $0000028B VOL: 0
 ;PCODE: $0000028C VOL: 0
-; 0000 01B6             readADC = read_adc(i);
 ;PCODE: $0000028D VOL: 0
 ;PCODE: $0000028E VOL: 0
 ;PCODE: $0000028F VOL: 0
-; 0000 01B7             if (readADC > calibratedBlackMax)
 ;PCODE: $00000290 VOL: 0
 ;PCODE: $00000291 VOL: 0
 ;PCODE: $00000292 VOL: 0
-; 0000 01B8                 calibratedBlackMax = readADC;
 ;PCODE: $00000293 VOL: 0
 ;PCODE: $00000294 VOL: 0
-; 0000 01B9         }
 ;PCODE: $00000295 VOL: 0
+; 0000 01C2     }
 ;PCODE: $00000296 VOL: 0
 ;PCODE: $00000297 VOL: 0
-; 0000 01BA         if (calibratedBlackMax < 255)
 ;PCODE: $00000298 VOL: 0
 ;PCODE: $00000299 VOL: 0
 ;PCODE: $0000029A VOL: 0
-; 0000 01BB             tolerance = (255 - calibratedBlackMax);     // hitung nilai toleransi
+; 0000 01C3 
+; 0000 01C4 }
 ;PCODE: $0000029B VOL: 0
 ;PCODE: $0000029C VOL: 0
 ;PCODE: $0000029D VOL: 0
-; 0000 01BC         else
 ;PCODE: $0000029E VOL: 0
+;
+;void whiteCalibrating()
+; 0000 01C7 {
 ;PCODE: $0000029F VOL: 0
-; 0000 01BD             tolerance = 0;
 ;PCODE: $000002A0 VOL: 0
+; 0000 01C8     unsigned char i;
+; 0000 01C9     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor
+; 0000 01CA     unsigned char calibratedWhiteMin;  // Nilai hitam minimum hasil kalibrasi putih, untuk tiap sensor
+; 0000 01CB     unsigned char readADC;  // nilai pembacaan ADC
+; 0000 01CC 
+; 0000 01CD     // Kalibrasi HItam
+; 0000 01CE     for (i=0; i<8; i++) {
 ;PCODE: $000002A1 VOL: 0
-; 0000 01BE         blackMax[i] = eeBlackMax[i] = (calibratedBlackMax + tolerance);  // simpan nilai kalibarasi di ram sekaligus di eeprom
+;	i -> R17
+;	calibratingCount -> R16
+;	calibratedWhiteMin -> R19
+;	readADC -> R18
 ;PCODE: $000002A2 VOL: 0
 ;PCODE: $000002A3 VOL: 0
 ;PCODE: $000002A4 VOL: 0
@@ -1161,95 +1181,82 @@
 ;PCODE: $000002A8 VOL: 0
 ;PCODE: $000002A9 VOL: 0
 ;PCODE: $000002AA VOL: 0
+; 0000 01CF         calibratingCount = CALIBRATING_COUNT;
 ;PCODE: $000002AB VOL: 0
 ;PCODE: $000002AC VOL: 0
+; 0000 01D0         calibratedWhiteMin = 255;     // Atur nilainya menjadi nilai maksimal tipedata unsigned byte, karena kita akan mencari nilai minimum
 ;PCODE: $000002AD VOL: 0
 ;PCODE: $000002AE VOL: 0
-; 0000 01BF     }
+; 0000 01D1         while (calibratingCount--) {
 ;PCODE: $000002AF VOL: 0
 ;PCODE: $000002B0 VOL: 0
 ;PCODE: $000002B1 VOL: 0
 ;PCODE: $000002B2 VOL: 0
 ;PCODE: $000002B3 VOL: 0
-; 0000 01C0 
-; 0000 01C1 }
 ;PCODE: $000002B4 VOL: 0
+; 0000 01D2             readADC = read_adc(i);
 ;PCODE: $000002B5 VOL: 0
 ;PCODE: $000002B6 VOL: 0
 ;PCODE: $000002B7 VOL: 0
-;
-;void whiteCalibrating()
-; 0000 01C4 {
+; 0000 01D3             if (readADC < calibratedWhiteMin)
 ;PCODE: $000002B8 VOL: 0
 ;PCODE: $000002B9 VOL: 0
-; 0000 01C5     unsigned char i;
-; 0000 01C6     unsigned char calibratingCount;   // Jumlah kalkulasi kalibrasi untuk tiap sensor
-; 0000 01C7     unsigned char calibratedWhiteMin;  // Nilai hitam minimum hasil kalibrasi putih, untuk tiap sensor
-; 0000 01C8     unsigned char readADC;  // nilai pembacaan ADC
-; 0000 01C9     unsigned char tolerance;  // nilai toleransi
-; 0000 01CA 
-; 0000 01CB     // Kalibrasi HItam
-; 0000 01CC     for (i=0; i<8; i++) {
 ;PCODE: $000002BA VOL: 0
-;	i -> R17
-;	calibratingCount -> R16
-;	calibratedWhiteMin -> R19
-;	readADC -> R18
-;	tolerance -> R21
+; 0000 01D4                 calibratedWhiteMin = readADC;
 ;PCODE: $000002BB VOL: 0
 ;PCODE: $000002BC VOL: 0
+; 0000 01D5         }
 ;PCODE: $000002BD VOL: 0
 ;PCODE: $000002BE VOL: 0
 ;PCODE: $000002BF VOL: 0
+; 0000 01D6         whiteMin[i] = eeWhiteMin[i] = calibratedWhiteMin;  // simpan nilai kalibarasi di ram sekaligus di eeprom
 ;PCODE: $000002C0 VOL: 0
 ;PCODE: $000002C1 VOL: 0
 ;PCODE: $000002C2 VOL: 0
 ;PCODE: $000002C3 VOL: 0
-; 0000 01CD         calibratingCount = CALIBRATING_COUNT;
 ;PCODE: $000002C4 VOL: 0
 ;PCODE: $000002C5 VOL: 0
-; 0000 01CE         calibratedWhiteMin = 255;     // Atur nilainya menjadi nilai maksimal tipedata unsigned byte, karena kita akan mencari nilai minimum
 ;PCODE: $000002C6 VOL: 0
 ;PCODE: $000002C7 VOL: 0
-; 0000 01CF         while (calibratingCount--) {
 ;PCODE: $000002C8 VOL: 0
 ;PCODE: $000002C9 VOL: 0
 ;PCODE: $000002CA VOL: 0
+; 0000 01D7     }
 ;PCODE: $000002CB VOL: 0
 ;PCODE: $000002CC VOL: 0
 ;PCODE: $000002CD VOL: 0
-; 0000 01D0             readADC = read_adc(i);
 ;PCODE: $000002CE VOL: 0
 ;PCODE: $000002CF VOL: 0
+; 0000 01D8 }
 ;PCODE: $000002D0 VOL: 0
-; 0000 01D1             if (readADC < calibratedWhiteMin)
 ;PCODE: $000002D1 VOL: 0
 ;PCODE: $000002D2 VOL: 0
 ;PCODE: $000002D3 VOL: 0
-; 0000 01D2                 calibratedWhiteMin = readADC;
+;
+;void applyCalibratedValue()
+; 0000 01DB {
 ;PCODE: $000002D4 VOL: 0
 ;PCODE: $000002D5 VOL: 0
-; 0000 01D3         }
+; 0000 01DC     unsigned char i = 0;
+; 0000 01DD 
+; 0000 01DE     for (; i<8; i++)
 ;PCODE: $000002D6 VOL: 0
+;	i -> R17
 ;PCODE: $000002D7 VOL: 0
 ;PCODE: $000002D8 VOL: 0
-; 0000 01D4         if (calibratedWhiteMin > 0)
 ;PCODE: $000002D9 VOL: 0
 ;PCODE: $000002DA VOL: 0
 ;PCODE: $000002DB VOL: 0
-; 0000 01D5             tolerance = calibratedWhiteMin / 2;     // hitung nilai toleransi
 ;PCODE: $000002DC VOL: 0
 ;PCODE: $000002DD VOL: 0
 ;PCODE: $000002DE VOL: 0
 ;PCODE: $000002DF VOL: 0
+; 0000 01DF         middleVal[i] = eeMiddleVal[i] = ((blackMax[i] - whiteMin[i]) / 2);
 ;PCODE: $000002E0 VOL: 0
-; 0000 01D6         else
 ;PCODE: $000002E1 VOL: 0
 ;PCODE: $000002E2 VOL: 0
-; 0000 01D7             tolerance = 0;
 ;PCODE: $000002E3 VOL: 0
 ;PCODE: $000002E4 VOL: 0
-; 0000 01D8         whiteMin[i] = eeWhiteMin[i] = (calibratedWhiteMin - tolerance);  // simpan nilai kalibarasi di ram sekaligus di eeprom
 ;PCODE: $000002E5 VOL: 0
 ;PCODE: $000002E6 VOL: 0
 ;PCODE: $000002E7 VOL: 0
@@ -1263,80 +1270,31 @@
 ;PCODE: $000002EF VOL: 0
 ;PCODE: $000002F0 VOL: 0
 ;PCODE: $000002F1 VOL: 0
-; 0000 01D9     }
 ;PCODE: $000002F2 VOL: 0
 ;PCODE: $000002F3 VOL: 0
 ;PCODE: $000002F4 VOL: 0
 ;PCODE: $000002F5 VOL: 0
 ;PCODE: $000002F6 VOL: 0
-; 0000 01DA }
 ;PCODE: $000002F7 VOL: 0
 ;PCODE: $000002F8 VOL: 0
 ;PCODE: $000002F9 VOL: 0
 ;PCODE: $000002FA VOL: 0
-;
-;void applyCalibratedValue()
-; 0000 01DD {
 ;PCODE: $000002FB VOL: 0
 ;PCODE: $000002FC VOL: 0
-; 0000 01DE     unsigned char i = 0;
-; 0000 01DF 
-; 0000 01E0     for (; i<8; i++)
 ;PCODE: $000002FD VOL: 0
-;	i -> R17
+; 0000 01E0 }
 ;PCODE: $000002FE VOL: 0
 ;PCODE: $000002FF VOL: 0
 ;PCODE: $00000300 VOL: 0
-;PCODE: $00000301 VOL: 0
-;PCODE: $00000302 VOL: 0
-;PCODE: $00000303 VOL: 0
-;PCODE: $00000304 VOL: 0
-;PCODE: $00000305 VOL: 0
-;PCODE: $00000306 VOL: 0
-; 0000 01E1         middleVal[i] = eeMiddleVal[i] = ((blackMax[i] - whiteMin[i]) / 2);
-;PCODE: $00000307 VOL: 0
-;PCODE: $00000308 VOL: 0
-;PCODE: $00000309 VOL: 0
-;PCODE: $0000030A VOL: 0
-;PCODE: $0000030B VOL: 0
-;PCODE: $0000030C VOL: 0
-;PCODE: $0000030D VOL: 0
-;PCODE: $0000030E VOL: 0
-;PCODE: $0000030F VOL: 0
-;PCODE: $00000310 VOL: 0
-;PCODE: $00000311 VOL: 0
-;PCODE: $00000312 VOL: 0
-;PCODE: $00000313 VOL: 0
-;PCODE: $00000314 VOL: 0
-;PCODE: $00000315 VOL: 0
-;PCODE: $00000316 VOL: 0
-;PCODE: $00000317 VOL: 0
-;PCODE: $00000318 VOL: 0
-;PCODE: $00000319 VOL: 0
-;PCODE: $0000031A VOL: 0
-;PCODE: $0000031B VOL: 0
-;PCODE: $0000031C VOL: 0
-;PCODE: $0000031D VOL: 0
-;PCODE: $0000031E VOL: 0
-;PCODE: $0000031F VOL: 0
-;PCODE: $00000320 VOL: 0
-;PCODE: $00000321 VOL: 0
-;PCODE: $00000322 VOL: 0
-;PCODE: $00000323 VOL: 0
-;PCODE: $00000324 VOL: 0
-; 0000 01E2 }
-;PCODE: $00000325 VOL: 0
-;PCODE: $00000326 VOL: 0
-;PCODE: $00000327 VOL: 0
 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;//// END OF REGION CALIBRATING FUNCTIONS ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;
 ;void pid()
-; 0000 01E8 {
-;PCODE: $00000328 VOL: 0
-;PCODE: $00000329 VOL: 0
-; 0000 01E9 
-; 0000 01EA }
-;PCODE: $0000032A VOL: 0
-;PCODE: $0000032B VOL: 0
+; 0000 01E6 {
+;PCODE: $00000301 VOL: 0
+;PCODE: $00000302 VOL: 0
+; 0000 01E7 
+; 0000 01E8 }
+;PCODE: $00000303 VOL: 0
+;PCODE: $00000304 VOL: 0
