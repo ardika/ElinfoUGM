@@ -78,9 +78,9 @@ eeprom unsigned char eeKd = 0;
 eeprom unsigned char eeKi = 0;
 
 // Varibel kepekaan sensor dalam memory non-volaitile
-eeprom unsigned char eeWhiteMin[8] = {10};   // Nilai pembacaan minimal untuk putih
-eeprom unsigned char eeBlackMax[8] = {220};  // Nilai pembacaan maksimal untuk hitam
-eeprom unsigned char eeMiddleVal[8] = {105};   // Nilai tengah antara white min dan black max
+eeprom unsigned char eeWhiteMin[8] = {5};   // Nilai pembacaan minimal untuk putih
+eeprom unsigned char eeBlackMax[8] = {230};  // Nilai pembacaan maksimal untuk hitam
+eeprom unsigned char eeMiddleVal[8] = {120};   // Nilai tengah antara white min dan black max
 
 // Varibael-varibel kontrol yang disimpan di memory volatile untuk perhitungan kontrol
 unsigned char maxSpeed;     // nilai kecepatan maksimal
@@ -102,7 +102,8 @@ unsigned char sensor = 0;
 //prototype fungsi
 void define_char(unsigned char flash *pc,unsigned char char_code);
 unsigned char read_adc(unsigned char adc_input);
-void scanLine();
+void scanLineRelative();
+void scanLineActual();
 void loadVariables();
 void saveVariables();
 void lcdOn(unsigned char on);
@@ -119,7 +120,7 @@ void whiteCalibrating();
 void blackCalibrating();
 void applyCalibratedValue();
 void pid();
-void scanLineActual();
+
 
 
 void main(void)
@@ -169,36 +170,6 @@ void main(void)
     OCR1BH=0x00;
     OCR1BL=0x00;
 
-    // Timer/Counter 2 initialization
-    // Clock source: System Clock
-    // Clock value: Timer2 Stopped
-    // Mode: Normal top=0xFF
-    // OC2 output: Disconnected
-    ASSR=0x00;
-    TCCR2=0x00;
-    TCNT2=0x00;
-    OCR2=0x00;
-
-    // External Interrupt(s) initialization
-    // INT0: Off
-    // INT1: Off
-    // INT2: Off
-    MCUCR=0x00;
-    MCUCSR=0x00;
-
-    // Timer(s)/Counter(s) Interrupt(s) initialization
-    TIMSK=0x00;
-
-    // USART initialization
-    // USART disabled
-    UCSRB=0x00;
-
-    // Analog Comparator initialization
-    // Analog Comparator: Off
-    // Analog Comparator Input Capture by Timer/Counter 1: Off
-    ACSR=0x80;
-    SFIOR=0x00;
-
     // ADC initialization
     // ADC Clock frequency: 125.000 kHz
     // ADC Voltage Reference: AVCC pin
@@ -207,26 +178,6 @@ void main(void)
     ADMUX=ADC_VREF_TYPE & 0xff;
     ADCSRA=0x87;
 
-    // SPI initialization
-    // SPI disabled
-    SPCR=0x00;
-
-    // TWI initialization
-    // TWI disabled
-    TWCR=0x00;
-
-
-    // Alphanumeric LCD initialization
-    // Connections are specified in the
-    // Project|Configure|C Compiler|Libraries|Alphanumeric LCD menu:
-    // RS - PORTB Bit 0
-    // RD - PORTB Bit 1
-    // EN - PORTB Bit 2
-    // D4 - PORTB Bit 4
-    // D5 - PORTB Bit 5
-    // D6 - PORTB Bit 6
-    // D7 - PORTB Bit 7
-    // Characters/line: 16
     lcd_init(16);   
     lcd_clear();
     define_char(fullBlock,FULL_BLOCK);
@@ -234,13 +185,15 @@ void main(void)
     lcdOn(1);       
     lcd_clear();
     
-    loadVariables();
+    loadVariables();    
+    applyCalibratedValue();
 
     while (1) {     
         lcd_gotoxy(0,0);
-        printADCSensor();
-        //scanLine();
-        //printBinarySensor(); 
+        //scanLineActual();
+        scanLineRelative();
+        //printBinarySensor();     
+        //printADCSensor();
               
     }
 }
@@ -291,35 +244,49 @@ void scanLineRelative()
 {
     unsigned char i = 0;      
     unsigned char adcRead;  // Variabel pembacaan nilai ADC          
-    // JUmlah warna putih dan hitam yang terdeteksi oleh sensor
-    unsigned char blackCount = 0; 
+    // JUmlah warna hitam yang terdeteksi oleh sensor
+    unsigned char blackCount = 0;             
+    unsigned char sensorWhiteLine = 0, sensorBlackLine = 0;
     
     sensor = 0x00;   // Hapus nilai sensor sebelumnya
     
     for (; i<8; i++) {     
-        adcRead = read_adc(i);  // Baca nilai ADC ada bit ke-i
-        if (adcRead > middleVal[i]) {
+        adcRead = read_adc(i);  // Baca nilai ADC ada bit ke-i  
+        if (adcRead >120) {
             blackCount++;       // Increment jumlah blok hitam yang terbaca
-            sensor |= (1<<i);
-        }
+            sensorBlackLine |= (1<<i);
+        }    
+        else 
+            sensorBlackLine |= (1<<i);
     }                   
-    if ((8 - blackCount) > 4)   // Jika blok hitam yg terdeteksi banyak, maka garisnya adalah putih
-        sensor = ~sensor;       // Lakukan negasi nilai sensor    
+    if ((8 - blackCount) > 4) {   // Jika blok hitam yg terdeteksi banyak, maka garisnya adalah putih
+        sensor = sensorWhiteLine;
+        lcd_putchar('W');
+    }     
+    else{
+        sensor = sensorBlackLine; 
+         lcd_putchar('B'); 
+    }
+    lcdPrintByte(blackCount);   
+    
+    
 }
 
 void loadVariables()
 {
-    unsigned char i = 0;
+    unsigned char i = 0;  
+    eeprom unsigned char *ptr;
     
     maxSpeed = eeMaxSpeed;
     kp = eeKp;
     kd = eeKd;
     ki = eeKi;
     
-    for (; i<8; i++) {  
-        whiteMin[i] = eeWhiteMin[i];
-        blackMax[i] = eeBlackMax[i]; 
-        middleVal[i] = eeMiddleVal[i];   
+    for (; i<8; i++) {        
+        ptr = &eeWhiteMin[i];
+        whiteMin[i] = *ptr;
+        ptr = &eeBlackMax[i];
+        blackMax[i] = *ptr;
     }    
 }
 
