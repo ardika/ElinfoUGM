@@ -41,6 +41,8 @@ Data Stack size         : 512
 // definisi kendali motor
 #define RIGHT_PWM   OCR1AL
 #define LEFT_PWM    OCR1BL
+#define TOP_PWM     255
+#define BOTTOM_PWM  0
 #define RIGHT_DR1   PORTD.6
 #define RIGHT_DR2   PORTD.7
 #define LEFT_DR1    PORTD.2
@@ -56,6 +58,20 @@ Data Stack size         : 512
 
 // definisi untuk melakukan kalibrasi
 #define CALIBRATING_COUNT   100
+
+// Permodelan menu menggunakan linked list
+struct menu {
+    char text[16];
+    struct menu *prev;
+    struct menu *next;
+    struct menu *child;
+    void (*onExecute)();
+};
+
+typedef struct menu Menu;
+
+//flash Menu start = {"Mulai",,,NULL,};
+
 
 
 flash unsigned char fullBlock[8] = {
@@ -128,9 +144,10 @@ flash unsigned char  rightArrow[8] = {
 
 // Variabel-variabel kontrol yang tersimpan di memory non-volatile
 eeprom unsigned char eeMaxSpeed = 255;
-eeprom unsigned char eeKp = 0;
-eeprom unsigned char eeKd = 0;
-eeprom unsigned char eeKi = 0;
+eeprom unsigned char eeMinSpeed = 0;
+eeprom int eeKp = 1;
+eeprom float eeKd = 1.5f;
+eeprom int eeKi = 0;
 
 // Varibel kepekaan sensor dalam memory non-volaitile
 eeprom unsigned char eeWhiteMin[8] = {5,5,5,5,5,5,5,5};   // Nilai pembacaan minimal untuk putih
@@ -138,12 +155,30 @@ eeprom unsigned char eeBlackMax[8] = {230,230,230,230,230,230,230,230};  // Nila
 eeprom unsigned char eeMiddleVal[8] = {120,120,120,120,120,120,120,120};   // Nilai tengah antara white min dan black max
 
 // Varibael-varibel kontrol yang disimpan di memory volatile untuk perhitungan kontrol
-unsigned char maxSpeed;     // nilai kecepatan maksimal
-unsigned char kp;           // konstanta proposional
-unsigned char kd;           // konstanta derivatif
-unsigned char ki;           // konstanta integral
-unsigned char error;        // nilai error pembacaan sensor
-unsigned char sp;           // nilai set point sensor 
+unsigned char maxSpeed = 255;     // nilai kecepatan maksimal
+unsigned char minSpeed = 0;
+unsigned char speedStep = 0;
+
+int kp = 0;           // konstanta proposional
+float kd = 1.0f;           // konstanta derivatif
+int ki = 1;           // konstanta integral
+int error = 0;        // nilai error pembacaan sensor saat ini
+int errorDiff = 0;    // selisih error dan error sebelumnya 
+int lastError = 0;    // nilai error sebelumnya
+int propotional = 0;
+int integral = 0;
+float derivative = 0;
+
+
+int sp;           // nilai set point sensor 
+int currentPosition;
+int targetPosition = 0;
+int integral;
+//int derivative;
+int previousError;
+int dt = 1;
+int output = 0;
+
 
 // Variabel kepekaan sensor dalam memory volatile untuk perhitungan
 unsigned char whiteMin[8] = {0};   // Nilai pembacaan minimal untuk putih
@@ -178,7 +213,8 @@ void blackCalibrating();
 void applyCalibratedValue();
 void pid();
 void showStartup();
-void LCDInit();
+void LCDInit();   
+void myPID();
 
 
 void main(void)
@@ -226,14 +262,18 @@ void main(void)
     loadVariables();    
     applyCalibratedValue();
     
-    showStartup();
-    
+    //showStartup(); 
+    go();       
+
     while (1) {     
-        lcd_gotoxy(0,0);
+        //lcd_gotoxy(0,0);
         //scanLineActual();
         scanLineRelative();
-        printBinarySensor();     
-        //printADCSensor();
+        //scanLineActual();
+        myPID();
+        //printBinarySensor();     
+        //printADCSensor();  
+        
               
     }
 }
@@ -266,7 +306,7 @@ unsigned char read_adc(unsigned char adc_input)
 // Fungsi scan garis aktual dimana nilai pembacaan hitam adalah 1 dan nilai pembacaan putih adalah 0
 void scanLineActual()
 {
-    unsigned char i = 0;    
+    unsigned char i = 8;    
     unsigned char adcRead;   
     
     sensor = 0;   // reset nilai sensor    
@@ -302,50 +342,59 @@ void scanLineRelative()
     }                     
     else
         lineColorFlag = 0;
-    lcdPrintByte(blackCount);
 }
 
 void loadVariables()
 {
     unsigned char i = 0;  
-    eeprom unsigned char *ptr;
+    eeprom int *ptr;  
+    eeprom unsigned char *ptr1;
+    eeprom float *ptr2;
                  
-    ptr = &eeMaxSpeed;
-    maxSpeed = *ptr;  
+    ptr1 = &eeMaxSpeed;
+    maxSpeed = *ptr1;
+    ptr1 = &eeMinSpeed;
+    minSpeed = *ptr1;
+    speedStep = (maxSpeed - minSpeed) / 8;
+      
     ptr = &eeKp;
     kp = *ptr;
-    ptr = &eeKd;
-    kd = *ptr;
+    ptr2 = &eeKd;
+    kd = *ptr2;
     ptr = &eeKi;
     ki = *ptr;
     
     for (; i<8; i++) {        
-        ptr = &eeWhiteMin[i];
-        whiteMin[i] = *ptr;
-        ptr = &eeBlackMax[i];
-        blackMax[i] = *ptr;
+        ptr1 = &eeWhiteMin[i];
+        whiteMin[i] = *ptr1;
+        ptr1 = &eeBlackMax[i];
+        blackMax[i] = *ptr1;
     }    
 }
 
 void saveVariables()
 {
     unsigned char i = 0;  
-    eeprom unsigned char *ptr;
+    eeprom int *ptr;  
+    eeprom unsigned char *ptr1; 
+    eeprom float *ptr2;
              
-    ptr = &eeMaxSpeed;
-    *ptr = maxSpeed;  
+    ptr1 = &eeMaxSpeed;
+    *ptr1 = maxSpeed;  
+    ptr1 = &eeMinSpeed;
+    *ptr1 = minSpeed;
     ptr = &eeKp;
     *ptr = kp;
-    ptr = &eeKd;
-    *ptr = kd;
+    ptr2 = &eeKd;
+    *ptr2 = kd;
     ptr = &eeKi;
     *ptr = ki;
     
     for (; i<8; i++) {   
-        ptr = &eeWhiteMin[i];
-        *ptr = whiteMin[i];
-        ptr = &eeBlackMax[i];
-        *ptr = blackMax[i];
+        ptr1 = &eeWhiteMin[i];
+        *ptr1 = whiteMin[i];
+        ptr1 = &eeBlackMax[i];
+        *ptr1 = blackMax[i];
     }
 }
 
@@ -395,8 +444,6 @@ void stop(unsigned char usingPowerBrake)
     }     
     
 }
-
-
 
 void lcdPrintByte(unsigned char value)
 {
@@ -493,15 +540,10 @@ void applyCalibratedValue()
 //// END OF REGION CALIBRATING FUNCTIONS ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void pid()
-{
-    
-}
-
 void showStartup()
 {
     char str[12] = "\4BISMILLAH\5";
-    char str1[15] = "ROBOTIKA UNNES";
+    char str1[17] = "ROBOTIKA UNNES ";
     unsigned char i = 0;
     
     lcd_gotoxy(3,0);
@@ -509,11 +551,13 @@ void showStartup()
         lcd_putchar(str[i]);
         delay_ms(100);
     }          
-    lcd_gotoxy(0,1);
-    for (i=0; i<15;  
+    lcd_gotoxy(1,1);
+    for (i=0; i<15; i++) {
+        lcd_putchar(str1[i]);
+        delay_ms(100);
+    }  
     delay_ms(2000);  
     lcd_clear();
-    
 }
 
 void LCDInit()
@@ -529,3 +573,172 @@ void LCDInit()
     lcdOn(1);       
     lcd_clear();
 }
+
+unsigned char abs(int val)
+{
+    return ((val<0)?(-val):(val));
+}
+
+void myPID()
+{
+    int leftpwm,rightpwm;       
+    int movement;
+    
+    switch (sensor) {
+        case 0b00000001:
+            error = 7;
+            break; 
+        case 0b00000011:
+        case 0b00000111:
+            error = 6;
+            break;   
+        case 0b00000010:
+            error = 5;
+            break;
+        case 0b00000110:
+        case 0b00001110:
+            error = 4;
+            break;    
+        case 0b00000100:
+            error = 3;
+            break;
+        case 0b00001100:
+        case 0b00011100:
+            error = 2;
+            break;    
+        case 0b00001000:
+            error = 1;
+            break;
+        case 0b00011000:
+            error = 0;
+            break;
+        case 0b00010000:
+            error = -1;
+            break;    
+        case 0b00110000:
+        case 0b00111000:
+            error = -2;
+            break;     
+        case 0b00100000:
+            error = -3;
+        case 0b01100000:
+        case 0b01110000:
+            error = -4;
+            break;     
+        case 0b01000000:
+            error = -5;
+            break;
+        case 0b11000000:
+        case 0b11100000:
+            error = -6;
+            break;    
+        case 0b10000000:
+            error = -7;
+            break;     
+        case 0b00000000:
+            if (error < 0) 
+                error = -8;
+            else if (error > 0)
+                error = 8;
+            break;
+    }           
+                        
+    // hitung nilai unsur proposional
+    propotional = kp * error;  
+    movement = propotional; 
+    if (movement == 0) 
+        leftpwm = rightpwm = maxSpeed;
+    else if (movement > 0) {   // Ke kanan
+        rightpwm = maxSpeed - (movement * speedStep);
+        leftpwm = maxSpeed + (movement * speedStep) - 30;        
+    } 
+    else if (movement < 0) {
+        leftpwm = maxSpeed + (movement * speedStep);
+        rightpwm = maxSpeed - (movement * speedStep) - 30;     
+    } 
+    if (leftpwm < minSpeed)
+        leftpwm = minSpeed;
+    if (leftpwm > maxSpeed)
+        leftpwm = maxSpeed;
+    if (rightpwm < minSpeed)
+        rightpwm = minSpeed;
+    if (rightpwm > maxSpeed)
+        rightpwm = maxSpeed;                                                       
+    
+    LEFT_PWM = leftpwm;
+    RIGHT_PWM = rightpwm;   
+    
+    lcd_gotoxy(0,0);
+    lcdPrintByte(rightpwm);
+    lcd_gotoxy(13,0);
+    lcdPrintByte(leftpwm);  
+    lcd_gotoxy(4,0);
+    printBinarySensor();  
+}
+
+void pid()
+{
+    int errorA =0, errorB=0;
+    switch(sensor) {
+        case 0b00000000: 
+            if(errorA >=0 && errorA <=5){
+            }
+            if(errorB >=0 && errorB <=5){
+            }
+            break;	
+            case 0b00000001: errorA = 7;errorB = 0; lcd_putchar('L');break;	 
+            case 0b00000011: errorA = 6;errorB = 0;right; break;
+            case 0b00000010: errorA = 5;errorB = 0;right; break;
+            case 0b00000110: errorA = 4;errorB = 0;right; break;
+            case 0b00000100: errorA = 3;errorB = 0; right;break;
+            case 0b00001100: errorA = 2;errorB = 0;go; break;
+            case 0b00001000: errorA = 1;errorB = 0;go; break;         
+            case 0b00011000: errorA = 0;errorB =0;go ;break;
+            case 0b00010000: errorA = 0;errorB = 1;go; break;
+            case 0b00110000: errorA = 0;errorB = 2;go; break;
+            case 0b00100000: errorA = 0;errorB = 3;go; break;
+            case 0b01100000: errorA = 0;errorB = 4;left; break;
+            case 0b01000000: errorA = 0;errorB = 5;left; break;
+            case 0b11000000: errorA = 0;errorB = 6;left; break;
+            case 0b10000000: errorA = 0;errorB = 7;left; break;       			
+        }
+        
+      
+      
+      
+   if(errorA == 0 && errorB == 0) currentPosition = 0;
+        if(errorA >= 1 ) currentPosition = errorA;
+        if(errorB >= 1 ) currentPosition = errorB;  
+        
+        error = targetPosition - currentPosition;
+        output = 100 ;//( kp*error );
+        
+       /* integral = integral + (error*dt);
+        derivative = ((error) - (previousError))/dt;
+        output = (kp*error) + (ki*integral) + (kd*derivative);
+        previousError = error;*/
+         
+                         
+        if (output < 0 ){
+        lcd_putchar('o'); 
+        go(); 
+        RIGHT_PWM = LEFT_PWM = 220;}
+        if (output >0 && (errorA >=1 && errorA <=7)){lcd_putchar('L');go();RIGHT_PWM = 200 - output; LEFT_PWM = 0;} 
+        if (output >0 && (errorB >=1 && errorB <=7)){lcd_putchar('R');go();LEFT_PWM = 10 - output; RIGHT_PWM = 200;}         
+      //     if (output < 1 ){
+      //  lcd_putchar('o'); 
+       // left(); 
+      //  RIGHT_PWM =200; LEFT_PWM = 40;}
+     //   if (output >0 && (errorA >=1 && errorA <=7)){lcd_putchar('L');  left();RIGHT_PWM = maxSpeed - output; LEFT_PWM = maxSpeed;} 
+    //    if (output >0 && (errorB >=1 && errorB <=7)){lcd_putchar('R'); left();LEFT_PWM = maxSpeed - output; RIGHT_PWM = maxSpeed;}  
+     //      if (output > 0 ){
+     //   lcd_putchar('o'); 
+       // right(); 
+      //  RIGHT_PWM =40; LEFT_PWM = 180;}
+      //  if (output >0 && (errorA <=1 && errorA >=7)){lcd_putchar('L');right();RIGHT_PWM = maxSpeed - output; LEFT_PWM = maxSpeed;} 
+      //  if (output >0 && (errorB <=1 && errorB >=7)){lcd_putchar('R');right();LEFT_PWM = maxSpeed - output; RIGHT_PWM = maxSpeed;}         
+                              
+                                      
+        //delay_ms(dt); 
+}
+
